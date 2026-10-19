@@ -48,4 +48,12 @@ export type AiMessage = {
   content: string;
 };
 
+export type WebSearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+};
+
+export type SearchResult = WebSearchResult;
+
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
