@@ -21,6 +21,6 @@ playwright-report/
 test-results/
 coverage/
 
-# OS
-.DS_Store
-Thumbs.db
+# TypeScript
+*.tsbuildinfo
+
