@@ -18,5 +18,5 @@
 | T13 | Security review and hardening | application-security-engineer | done | T12 | No high/critical production vulnerabilities; security review clean | docs/evidence/security-audit.json, security-review.md | Security |
 | T14 | Accessibility and performance checks | test-automation-engineer | done | T12 | axe WCAG A/AA zero violations; bundle within budget | docs/evidence/a11y-* perf-* | Accessibility/Performance |
 | T15 | Documentation and AGENTS.md maintenance | technical-writer | done | T13,T14 | All folders documented | repo | Documentation |
-| T16 | Repository admin commit/push | general | todo | T15 | Clean git push | git log | n/a |
+| T16 | Repository admin commit/push | git-workflow-master | done | T15 | Clean git push | git log | n/a |
 | T17 | Final report | orchestrator | done | T16 | docs/final-report.md complete | docs/final-report.md | n/a |
