@@ -71,4 +71,12 @@ export const api = {
     request<{ content: string }>("/api/ai/evaluate-skill", { method: "POST", body: JSON.stringify({ skill }) }),
   aiOptimizeSkill: (skill: string) =>
     request<{ content: string }>("/api/ai/optimize-skill", { method: "POST", body: JSON.stringify({ skill }) }),
+
+  getSettings: () => request<Record<string, string>>("/api/settings"),
+  getSetting: <T>(key: string) => request<{ key: string; value: T }>(`/api/settings/${encodeURIComponent(key)}`),
+  setSetting: <T>(key: string, value: T) =>
+    request<{ key: string; value: T }>(`/api/settings/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
 };

@@ -9,7 +9,7 @@ test.describe("skill search flow", () => {
       (r) => r.url().includes("/api/search/web") && r.status() === 200,
     );
     await page.getByLabel("Query").fill("prompt engineering");
-    await panel.getByRole("button", { name: "Search" }).click();
+    await panel.getByRole("button", { name: "Search", exact: true }).click();
     const res = await search;
 
     // Request carried the URL-encoded query
@@ -28,23 +28,23 @@ test.describe("skill search flow", () => {
     api.set("GET /api/search/web", { status: 500, body: { ok: false, error: "Search unavailable" } });
 
     await page.getByLabel("Query").fill("prompt engineering");
-    await panel.getByRole("button", { name: "Search" }).click();
+    await panel.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page.getByText("Search unavailable")).toBeVisible();
 
     api.set("GET /api/search/web", {
       status: 200,
-      body: { query: "", results: [{ title: "Recovered", url: "https://example.com/x", snippet: "ok" }] },
+      body: { ok: true, data: { query: "", results: [{ title: "Recovered", url: "https://example.com/x", snippet: "ok" }] } },
     });
-    await panel.getByRole("button", { name: "Search" }).click();
+    await panel.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page.getByRole("link", { name: "Recovered" })).toBeVisible();
   });
 
   test("empty result list is communicated", async ({ page }) => {
     const { api, panel } = await openSkillSearch(page);
-    api.set("GET /api/search/web", { status: 200, body: { query: "", results: [] } });
+    api.set("GET /api/search/web", { status: 200, body: { ok: true, data: { query: "", results: [] } } });
 
     await page.getByLabel("Query").fill("very obscure topic");
-    await panel.getByRole("button", { name: "Search" }).click();
+    await panel.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page.getByText("No results.")).toBeVisible();
   });
 });
@@ -87,7 +87,7 @@ test.describe("prompt library flow", () => {
     });
 
     await page.getByLabel("Search").fill("hello");
-    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("button", { name: "Search", exact: true }).click();
 
     await expect.poll(async () => requestedQuery).toBe("hello");
     await expect(page.getByText("Prompt Two")).toBeHidden();

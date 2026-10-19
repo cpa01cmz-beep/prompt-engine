@@ -19,7 +19,7 @@ export function getAiConfig(env: Env, settings?: Record<string, string>): AiConf
   const baseUrl =
     s.OPENAI_BASE_URL || s.openai_base_url || env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
   const model =
-    s.OPENAI_MODEL || s.openai_model || env.OPENAI_MODEL || "deepseek-v4-flash-free";
+    s.OPENAI_MODEL || s.openai_model || env.OPENAI_MODEL || "deepseek-v4.1-flash-free";
   const apiKey = env.OPENAI_API_KEY;
   return { baseUrl, model, apiKey };
 }

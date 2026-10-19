@@ -18,4 +18,4 @@ id = "00000000000000000000000000000000"
 
 [vars]
 OPENAI_BASE_URL = "https://opencode.ai/zen/v1"
-OPENAI_MODEL = "deepseek-v4-flash-free"
+OPENAI_MODEL = "deepseek-v4.1-flash-free"

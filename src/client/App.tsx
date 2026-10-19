@@ -13,6 +13,8 @@ import { SkillOptimizer } from "./modules/SkillOptimizer";
 import { SkillEvaluator } from "./modules/SkillEvaluator";
 import { SkillLibrary } from "./modules/SkillLibrary";
 import { SkillLab } from "./modules/SkillLab";
+import { SettingsModal } from "./components/SettingsModal";
+import { Button } from "./components/ui";
 import { cn } from "./components/utils";
 
 type Engine = "prompt" | "skill";
@@ -88,6 +90,7 @@ function renderSkillModule(active: string): JSX.Element | null {
 export default function App(): JSX.Element {
   const [engine, setEngine] = useState<Engine>("prompt");
   const [active, setActive] = useState<string>("creator");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const modules = engine === "prompt" ? promptModules : skillModules;
   const current = modules.find((m) => m.id === active) ?? modules[0];
 
@@ -141,8 +144,19 @@ export default function App(): JSX.Element {
               Skills Engine
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Open settings"
+              className="rounded-full px-3 py-1.5"
+            >
+              Settings
+            </Button>
+          </div>
         </div>
       </header>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">

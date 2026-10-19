@@ -7,7 +7,7 @@ describe("getAiConfig", () => {
     const cfg = getAiConfig({} as unknown as Env);
 
     expect(cfg.baseUrl).toBe("https://opencode.ai/zen/v1");
-    expect(cfg.model).toBe("deepseek-v4-flash-free");
+    expect(cfg.model).toBe("deepseek-v4.1-flash-free");
   });
 
   it("never sources the API key from settings", () => {

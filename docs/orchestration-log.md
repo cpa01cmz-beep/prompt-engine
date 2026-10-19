@@ -14,7 +14,14 @@
 - Agency agents installed from GitHub into `.opencode/agents/`.
 - Next: delegate architecture and scaffold.
 
-## Agent Inventory Update
+## Chronological Log (continued)
+- Backend security hardening commit `ea1a7e3`: closed SSRF/secret-exfiltration path in AI settings; error reflection fixed; zod validation.
+- Frontend settings modal commit pending: user can switch provider/model presets; secrets remain env-only.
+- Default AI model updated to available free model `deepseek-v4.1-flash-free`.
+- E2E tests: 102/102 passed across Chromium, Firefox, WebKit.
+- Quality evidence recorded under `docs/evidence/`.
+- Residual dev-only audit warnings: none (npm audit --omit=dev and full audit both 0 vulnerabilities).
+
 - Discovered 104 specialized agents under `.opencode/agents/`.
 - Full inventory recorded in `docs/agent-inventory.md`.
 - Future tasks should be assigned to best-suited specialized agents instead of generic `general` where possible.

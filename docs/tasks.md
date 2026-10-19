@@ -14,9 +14,9 @@
 | T9 | Premium design system and responsiveness | ui-designer | done | T7,T8 | Visual QA evidence | docs/evidence/* | Accessibility/Compatibility |
 | T10 | Unit tests | test-automation-engineer | done | T5-T8 | Coverage threshold | docs/evidence/unit-* | Unit |
 | T11 | Integration tests | test-automation-engineer | done | T5-T8 | API tests pass | docs/evidence/integration-* | Integration |
-| T12 | E2E/browser tests | general | todo | T9-T11 | Playwright passes multi-browser | docs/evidence/e2e-* | E2E |
+| T12 | E2E/browser tests | test-automation-engineer | done | T9-T11 | Playwright passes multi-browser (102/102) | docs/evidence/e2e-* | E2E |
 | T13 | Security review and hardening | application-security-engineer | done | T12 | No high/critical production vulnerabilities; security review clean | docs/evidence/security-audit.json, security-review.md | Security |
-| T14 | Accessibility and performance checks | general | todo | T12 | Pass thresholds | docs/evidence/a11y-* perf-* | Accessibility/Performance |
-| T15 | Documentation and AGENTS.md maintenance | general | todo | T13,T14 | All folders documented | repo | Documentation |
+| T14 | Accessibility and performance checks | test-automation-engineer | done | T12 | axe WCAG A/AA zero violations; bundle within budget | docs/evidence/a11y-* perf-* | Accessibility/Performance |
+| T15 | Documentation and AGENTS.md maintenance | technical-writer | done | T13,T14 | All folders documented | repo | Documentation |
 | T16 | Repository admin commit/push | general | todo | T15 | Clean git push | git log | n/a |
-| T17 | Final report | orchestrator | todo | T16 | docs/final-report.md complete | docs/final-report.md | n/a |
+| T17 | Final report | orchestrator | done | T16 | docs/final-report.md complete | docs/final-report.md | n/a |
