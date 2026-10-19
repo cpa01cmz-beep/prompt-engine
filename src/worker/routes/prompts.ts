@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/prompts";
-import type { Prompt } from "@shared/types";
-import { isNonEmptyString, parseJsonBody } from "../lib/validate";
+import { PromptInputSchema, PromptUpdateSchema } from "../schemas";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -30,11 +29,12 @@ app.get("/:id", async (c) => {
 
 app.post("/", async (c) => {
   try {
-    const body = await parseJsonBody<Omit<Prompt, "id" | "version" | "createdAt" | "updatedAt">>(c);
-    if (!isNonEmptyString(body?.title) || !isNonEmptyString(body?.content)) {
-      return c.json({ ok: false, error: "Missing required fields: title, content" }, 400);
+    const body = await c.req.json();
+    const parsed = PromptInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: parsed.error.message }, 400);
     }
-    const created = await repo.createPrompt(c.env.DB, body);
+    const created = await repo.createPrompt(c.env.DB, parsed.data);
     return c.json({ ok: true, data: created }, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -44,14 +44,12 @@ app.post("/", async (c) => {
 
 app.put("/:id", async (c) => {
   try {
-    const body = await parseJsonBody<Partial<Prompt>>(c);
-    if (body?.title !== undefined && !isNonEmptyString(body.title)) {
-      return c.json({ ok: false, error: "Invalid field: title" }, 400);
+    const body = await c.req.json();
+    const parsed = PromptUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: parsed.error.message }, 400);
     }
-    if (body?.content !== undefined && !isNonEmptyString(body.content)) {
-      return c.json({ ok: false, error: "Invalid field: content" }, 400);
-    }
-    const updated = await repo.updatePrompt(c.env.DB, c.req.param("id"), body);
+    const updated = await repo.updatePrompt(c.env.DB, c.req.param("id"), parsed.data);
     if (!updated) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: updated });
   } catch (err) {

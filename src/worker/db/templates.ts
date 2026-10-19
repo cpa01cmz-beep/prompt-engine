@@ -32,8 +32,11 @@ function toTemplate(row: Row): Template {
   };
 }
 
-export async function listTemplates(db: D1Database): Promise<Template[]> {
-  const res = await db.prepare("SELECT * FROM templates ORDER BY updated_at DESC").all<Row>();
+export async function listTemplates(db: D1Database, search?: string): Promise<Template[]> {
+  const stmt = search
+    ? db.prepare("SELECT * FROM templates WHERE name LIKE ?1 OR body LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
+    : db.prepare("SELECT * FROM templates ORDER BY updated_at DESC");
+  const res = await stmt.all<Row>();
   return (res.results ?? []).map(toTemplate);
 }
 

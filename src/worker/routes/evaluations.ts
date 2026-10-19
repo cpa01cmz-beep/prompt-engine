@@ -1,8 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/evaluations";
-import type { Evaluation } from "@shared/types";
-import { isNonEmptyString, parseJsonBody } from "../lib/validate";
+import { EvaluationInputSchema } from "../schemas";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -18,13 +17,33 @@ app.get("/", async (c) => {
   }
 });
 
+app.get("/:id", async (c) => {
+  try {
+    // evaluations repo has no get by id; list and find
+    const all = await repo.listEvaluations(c.env.DB);
+    const item = all.find((e) => e.id === c.req.param("id"));
+    if (!item) return c.json({ ok: false, error: "Not found" }, 404);
+    return c.json({ ok: true, data: item });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ ok: false, error: message }, 500);
+  }
+});
+
 app.post("/", async (c) => {
   try {
-    const body = await parseJsonBody<Omit<Evaluation, "id" | "createdAt">>(c);
-    if (!isNonEmptyString(body?.targetType) || !isNonEmptyString(body?.targetId)) {
-      return c.json({ ok: false, error: "Missing required fields: targetType, targetId" }, 400);
+    const body = await c.req.json();
+    const parsed = EvaluationInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: parsed.error.message }, 400);
     }
-    const created = await repo.createEvaluation(c.env.DB, body);
+    const created = await repo.createEvaluation(c.env.DB, {
+      targetType: parsed.data.targetType,
+      targetId: parsed.data.targetId,
+      score: parsed.data.score ?? null,
+      feedback: parsed.data.feedback,
+      model: parsed.data.model,
+    });
     return c.json({ ok: true, data: created }, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

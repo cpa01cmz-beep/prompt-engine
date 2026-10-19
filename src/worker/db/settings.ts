@@ -20,3 +20,16 @@ export async function listSettings(db: D1Database): Promise<Record<string, strin
   for (const row of res.results ?? []) out[row.key] = row.value;
   return out;
 }
+export async function getSettingTyped<T>(db: D1Database, key: string): Promise<T | null> {
+  const raw = await getSetting(db, key);
+  if (raw === null) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return raw as unknown as T;
+  }
+}
+
+export async function setSettingTyped(db: D1Database, key: string, value: unknown): Promise<void> {
+  await setSetting(db, key, JSON.stringify(value));
+}

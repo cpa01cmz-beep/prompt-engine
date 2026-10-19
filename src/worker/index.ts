@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { secureHeaders } from "hono/secure-headers";
 import type { Env } from "./env";
+import { securityHeaders } from "./middleware/security";
+import { corsMiddleware } from "./middleware/cors";
+import { rateLimitMiddleware } from "./middleware/rateLimit";
 import health from "./routes/health";
 import prompts from "./routes/prompts";
 import templates from "./routes/templates";
@@ -13,8 +14,16 @@ import search from "./routes/search";
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.use("*", secureHeaders());
-app.use("*", cors());
+app.use("*", securityHeaders());
+app.use("*", corsMiddleware());
+app.use("*", rateLimitMiddleware());
+
+app.onError((err, c) => {
+  const message = err instanceof Error ? err.message : String(err);
+  return c.json({ ok: false, error: message }, 500);
+});
+
+app.notFound((c) => c.json({ ok: false, error: "Not found" }, 404));
 
 app.route("/api/health", health);
 app.route("/api/prompts", prompts);
@@ -27,7 +36,10 @@ app.route("/api/search", search);
 
 // Fallback to static assets
 app.all("*", async (c) => {
-  return c.env.ASSETS.fetch(c.req.raw);
+  if (c.env?.ASSETS) {
+    return c.env.ASSETS.fetch(c.req.raw);
+  }
+  return c.json({ ok: false, error: "Not found" }, 404);
 });
 
 export default app;

@@ -40,7 +40,7 @@ function toSkill(row: Row): Skill {
 
 export async function listSkills(db: D1Database, search?: string): Promise<Skill[]> {
   const stmt = search
-    ? db.prepare("SELECT * FROM skills WHERE name LIKE ?1 OR description LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
+    ? db.prepare("SELECT * FROM skills WHERE name LIKE ?1 OR description LIKE ?1 OR instructions LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
     : db.prepare("SELECT * FROM skills ORDER BY updated_at DESC");
   const res = await stmt.all<Row>();
   return (res.results ?? []).map(toSkill);
