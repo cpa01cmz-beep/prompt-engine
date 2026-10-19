@@ -1,4 +1,18 @@
 import { useState } from "react";
+import { PromptCreator } from "./modules/PromptCreator";
+import { PromptEvaluator } from "./modules/PromptEvaluator";
+import { PromptOptimizer } from "./modules/PromptOptimizer";
+import { PromptCompare } from "./modules/PromptCompare";
+import { PromptLibrary } from "./modules/PromptLibrary";
+import { PromptTemplates } from "./modules/PromptTemplates";
+import { PromptResearch } from "./modules/PromptResearch";
+import { SkillSearch } from "./modules/SkillSearch";
+import { SkillResearch } from "./modules/SkillResearch";
+import { SkillCreator } from "./modules/SkillCreator";
+import { SkillOptimizer } from "./modules/SkillOptimizer";
+import { SkillEvaluator } from "./modules/SkillEvaluator";
+import { SkillLibrary } from "./modules/SkillLibrary";
+import { SkillLab } from "./modules/SkillLab";
 
 type Module = {
   id: string;
@@ -25,6 +39,48 @@ const skillModules: Module[] = [
   { id: "library", title: "Library", description: "Manage skills" },
   { id: "lab", title: "Lab", description: "Experiment and test" },
 ];
+
+function renderPromptModule(active: string) {
+  switch (active) {
+    case "creator":
+      return <PromptCreator />;
+    case "evaluator":
+      return <PromptEvaluator />;
+    case "optimizer":
+      return <PromptOptimizer />;
+    case "compare":
+      return <PromptCompare />;
+    case "library":
+      return <PromptLibrary />;
+    case "template":
+      return <PromptTemplates />;
+    case "research":
+      return <PromptResearch />;
+    default:
+      return null;
+  }
+}
+
+function renderSkillModule(active: string) {
+  switch (active) {
+    case "search":
+      return <SkillSearch />;
+    case "research":
+      return <SkillResearch />;
+    case "creator":
+      return <SkillCreator />;
+    case "optimizer":
+      return <SkillOptimizer />;
+    case "evaluator":
+      return <SkillEvaluator />;
+    case "library":
+      return <SkillLibrary />;
+    case "lab":
+      return <SkillLab />;
+    default:
+      return null;
+  }
+}
 
 export default function App() {
   const [engine, setEngine] = useState<"prompt" | "skill">("prompt");
@@ -86,8 +142,10 @@ export default function App() {
           <p className="mt-2 text-slate-600">
             {engine === "prompt" ? "Prompt Engine" : "Skills Engine"} module: {active}
           </p>
-          <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-            Module workspace coming soon. API available at /api/*.
+          <div className="mt-6">
+            {engine === "prompt"
+              ? renderPromptModule(active)
+              : renderSkillModule(active)}
           </div>
         </section>
       </main>
