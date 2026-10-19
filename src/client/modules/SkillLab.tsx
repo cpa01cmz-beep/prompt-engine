@@ -47,7 +47,7 @@ export function SkillLab() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="space-y-1">
         <label className="text-sm font-medium text-slate-700" htmlFor="skill-select">
           Skill

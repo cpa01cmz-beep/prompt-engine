@@ -42,7 +42,7 @@ export function SkillCreator() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Goal" value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
       <div className="flex flex-wrap gap-2">
         <Button onClick={generate} loading={loading} disabled={!goal.trim()}>
@@ -54,7 +54,9 @@ export function SkillCreator() {
       </div>
       <ErrorText message={error} />
       <SuccessText message={success} />
-      <Textarea label="Result" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      <div aria-live="polite">
+        <Textarea label="Result" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      </div>
     </Card>
   );
 }

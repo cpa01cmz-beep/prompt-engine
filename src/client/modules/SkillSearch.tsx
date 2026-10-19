@@ -24,7 +24,7 @@ export function SkillSearch() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <div className="flex-1">
           <Input label="Query" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -36,7 +36,7 @@ export function SkillSearch() {
         </div>
       </div>
       <ErrorText message={error} />
-      <div className="space-y-3">
+      <div className="space-y-3" aria-live="polite">
         {results.map((r, idx) => (
           <Card key={`${r.url}-${idx}`} className="space-y-1">
             <a

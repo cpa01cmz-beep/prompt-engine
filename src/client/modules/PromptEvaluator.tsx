@@ -41,14 +41,14 @@ export function PromptEvaluator() {
       : null;
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={8} />
       <Button onClick={evaluate} loading={loading} disabled={!prompt.trim()}>
         Evaluate
       </Button>
       <ErrorText message={error} />
       {result && (
-        <Card className="bg-slate-50 space-y-2">
+        <Card className="bg-slate-50 space-y-2" aria-live="polite">
           {score !== null && score !== undefined && (
             <p className="text-lg font-semibold text-slate-900">Score: {String(score)}</p>
           )}

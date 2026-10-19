@@ -29,13 +29,15 @@ export function PromptResearch() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Input label="Topic" value={topic} onChange={(e) => setTopic(e.target.value)} />
       <Button onClick={run} loading={loading} disabled={!topic.trim()}>
         Research
       </Button>
       <ErrorText message={error} />
-      <Textarea label="Response" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      <div aria-live="polite">
+        <Textarea label="Response" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      </div>
     </Card>
   );
 }

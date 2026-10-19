@@ -41,14 +41,14 @@ export function SkillEvaluator() {
       : null;
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Skill" value={skill} onChange={(e) => setSkill(e.target.value)} rows={10} />
       <Button onClick={evaluate} loading={loading} disabled={!skill.trim()}>
         Evaluate
       </Button>
       <ErrorText message={error} />
       {result && (
-        <Card className="bg-slate-50 space-y-2">
+        <Card className="bg-slate-50 space-y-2" aria-live="polite">
           {score !== null && score !== undefined && (
             <p className="text-lg font-semibold text-slate-900">Score: {String(score)}</p>
           )}

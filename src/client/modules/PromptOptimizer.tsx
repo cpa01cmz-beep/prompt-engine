@@ -22,13 +22,15 @@ export function PromptOptimizer() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Prompt" value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={8} />
       <Button onClick={optimize} loading={loading} disabled={!prompt.trim()}>
         Optimize
       </Button>
       <ErrorText message={error} />
-      <Textarea label="Improved prompt" value={result} onChange={(e) => setResult(e.target.value)} rows={10} />
+      <div aria-live="polite">
+        <Textarea label="Improved prompt" value={result} onChange={(e) => setResult(e.target.value)} rows={10} />
+      </div>
     </Card>
   );
 }

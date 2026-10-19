@@ -46,7 +46,7 @@ export function PromptCompare() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
         <Textarea label="Prompt A" value={a} onChange={(e) => setA(e.target.value)} rows={8} />
         <Textarea label="Prompt B" value={b} onChange={(e) => setB(e.target.value)} rows={8} />

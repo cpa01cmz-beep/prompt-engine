@@ -81,7 +81,7 @@ export function PromptCreator() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Goal" value={goal} onChange={(e) => setGoal(e.target.value)} rows={3} />
       <Input label="Role" value={role} onChange={(e) => setRole(e.target.value)} />
       <Input label="Variables (comma separated)" value={variables} onChange={(e) => setVariables(e.target.value)} />
@@ -103,9 +103,11 @@ export function PromptCreator() {
       </div>
       <ErrorText message={error} />
       <SuccessText message={success} />
-      <Textarea label="Result" value={result} onChange={(e) => setResult(e.target.value)} rows={10} />
+      <div aria-live="polite">
+        <Textarea label="Result" value={result} onChange={(e) => setResult(e.target.value)} rows={10} />
+      </div>
       {evalInfo && (
-        <Card className="bg-slate-50">
+        <Card className="bg-slate-50" aria-live="polite">
           <p className="text-sm font-medium text-slate-700">Evaluation</p>
           <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-800">{evalInfo}</pre>
         </Card>

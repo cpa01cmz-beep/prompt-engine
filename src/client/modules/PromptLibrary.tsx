@@ -77,7 +77,7 @@ export function PromptLibrary() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <Input label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
         <Button onClick={() => void load(query)} loading={loading}>
@@ -86,7 +86,7 @@ export function PromptLibrary() {
       </div>
       <ErrorText message={error} />
       <SuccessText message={success} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2" aria-live="polite">
         <div className="space-y-2">
           {items.map((p) => (
             <Card key={p.id} className="cursor-pointer hover:bg-slate-50" >
@@ -115,7 +115,7 @@ export function PromptLibrary() {
         </div>
         <div>
           {selected ? (
-            <Card className="space-y-3">
+            <Card className="space-y-4">
               <Input label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
               <Textarea label="Content" value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={10} />
               <Button onClick={saveEdit} loading={loading}>

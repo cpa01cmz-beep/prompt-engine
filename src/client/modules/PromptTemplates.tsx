@@ -100,7 +100,7 @@ export function PromptTemplates() {
   const vars = selected ? variablesOf(selected) : [];
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <Button onClick={load} loading={loading}>
           Refresh
@@ -109,7 +109,7 @@ export function PromptTemplates() {
       <ErrorText message={error} />
       <SuccessText message={success} />
 
-      <Card className="space-y-3">
+      <Card className="space-y-4">
         <h3 className="font-semibold text-slate-900">Create template</h3>
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
         <Textarea label="Body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
@@ -123,7 +123,7 @@ export function PromptTemplates() {
         </Button>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2" aria-live="polite">
         <div className="space-y-2">
           {templates.map((t) => (
             <Card key={t.id} className="space-y-2">
@@ -146,7 +146,7 @@ export function PromptTemplates() {
         </div>
         <div>
           {selected ? (
-            <Card className="space-y-3">
+            <Card className="space-y-4">
               <h3 className="font-semibold text-slate-900">{selected.name}</h3>
               {vars.map((v) => (
                 <Input

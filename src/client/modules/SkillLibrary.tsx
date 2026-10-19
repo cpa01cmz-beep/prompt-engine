@@ -78,7 +78,7 @@ export function SkillLibrary() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <div className="flex flex-wrap gap-2">
         <Input label="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
         <Button onClick={() => void load(query)} loading={loading}>
@@ -87,7 +87,7 @@ export function SkillLibrary() {
       </div>
       <ErrorText message={error} />
       <SuccessText message={success} />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2" aria-live="polite">
         <div className="space-y-2">
           {items.map((s) => (
             <Card key={s.id}>
@@ -112,7 +112,7 @@ export function SkillLibrary() {
         </div>
         <div>
           {selected ? (
-            <Card className="space-y-3">
+            <Card className="space-y-4">
               <Input label="Name" value={editName} onChange={(e) => setEditName(e.target.value)} />
               <Input
                 label="Description"

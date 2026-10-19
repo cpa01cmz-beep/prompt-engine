@@ -22,13 +22,15 @@ export function SkillOptimizer() {
   };
 
   return (
-    <Card className="space-y-4">
+    <Card className="space-y-5">
       <Textarea label="Skill" value={skill} onChange={(e) => setSkill(e.target.value)} rows={10} />
       <Button onClick={optimize} loading={loading} disabled={!skill.trim()}>
         Optimize
       </Button>
       <ErrorText message={error} />
-      <Textarea label="Improved skill" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      <div aria-live="polite">
+        <Textarea label="Improved skill" value={result} onChange={(e) => setResult(e.target.value)} rows={12} />
+      </div>
     </Card>
   );
 }
