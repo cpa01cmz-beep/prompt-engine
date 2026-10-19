@@ -172,7 +172,7 @@ export default function App(): JSX.Element {
                       <span
                         className={cn(
                           "mt-0.5 hidden px-3 pb-1 text-xs lg:block",
-                          isActive ? "text-indigo-600/80" : "text-slate-500",
+                          isActive ? "text-indigo-600" : "text-slate-500",
                         )}
                       >
                         {m.description}

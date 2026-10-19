@@ -35,7 +35,7 @@ test.describe("accessibility (axe)", () => {
       if (engine === "skill") {
         await page.getByRole("button", { name: "Skills Engine" }).click();
       }
-      await page.locator("aside").getByRole("button", { name: title }).click();
+      await page.locator("aside").getByRole("button", { name: title, exact: true }).click();
       await expect(page.getByRole("heading", { name: title, level: 2 })).toBeVisible();
       await scan(page);
     });
