@@ -13,3 +13,8 @@
 - PRD, task breakdown, review plan, orchestration log created.
 - Agency agents installed from GitHub into `.opencode/agents/`.
 - Next: delegate architecture and scaffold.
+
+## Agent Inventory Update
+- Discovered 104 specialized agents under `.opencode/agents/`.
+- Full inventory recorded in `docs/agent-inventory.md`.
+- Future tasks should be assigned to best-suited specialized agents instead of generic `general` where possible.
