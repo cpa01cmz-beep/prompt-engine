@@ -40,8 +40,8 @@ app.post("/chat", async (c) => {
     const content = await chatCompletion(c.env, parsed.data.messages as AiMessage[]);
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -56,8 +56,8 @@ app.post("/generate-prompt", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.7 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -78,8 +78,8 @@ app.post("/evaluate-prompt", async (c) => {
     }
     return c.json({ ok: true, data: { content, evaluation: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -94,8 +94,8 @@ app.post("/optimize-prompt", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.6 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -116,8 +116,8 @@ app.post("/generate-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, skill: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -138,8 +138,8 @@ app.post("/evaluate-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, evaluation: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -160,8 +160,8 @@ app.post("/optimize-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, skill: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -182,8 +182,8 @@ app.post("/compare-prompts", async (c) => {
     }
     return c.json({ ok: true, data: { content, comparison: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -198,8 +198,8 @@ app.post("/research", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.5 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -232,8 +232,8 @@ app.post("/search-skills", async (c) => {
     }
     return c.json({ ok: true, data: { content, results, candidates: parsedJson } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -248,8 +248,8 @@ app.post("/run-skill", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.5 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 

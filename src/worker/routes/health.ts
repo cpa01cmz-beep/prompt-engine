@@ -7,8 +7,8 @@ app.get("/", async (c) => {
   try {
     return c.json({ status: "ok" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 

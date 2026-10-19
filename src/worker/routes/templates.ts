@@ -11,8 +11,8 @@ app.get("/", async (c) => {
     const data = await repo.listTemplates(c.env.DB, search ?? undefined);
     return c.json({ ok: true, data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -22,8 +22,8 @@ app.get("/:id", async (c) => {
     if (!item) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: item });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -37,8 +37,8 @@ app.post("/", async (c) => {
     const created = await repo.createTemplate(c.env.DB, parsed.data);
     return c.json({ ok: true, data: created }, 201);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -53,8 +53,8 @@ app.put("/:id", async (c) => {
     if (!updated) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: updated });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -64,8 +64,8 @@ app.delete("/:id", async (c) => {
     if (!ok) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: null });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -100,8 +100,8 @@ app.post("/:id/render", async (c) => {
     });
     return c.json({ ok: true, data: { rendered, missing } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -124,8 +124,8 @@ app.get("/:id/render", async (c) => {
     });
     return c.json({ ok: true, data: { rendered, missing } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 

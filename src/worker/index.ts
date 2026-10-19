@@ -19,8 +19,10 @@ app.use("*", corsMiddleware());
 app.use("*", rateLimitMiddleware());
 
 app.onError((err, c) => {
-  const message = err instanceof Error ? err.message : String(err);
-  return c.json({ ok: false, error: message }, 500);
+  // Log full detail server-side only; never reflect internal error text
+  // (provider responses, D1 errors, stack details) to public API clients.
+  console.error("Unhandled worker error:", err);
+  return c.json({ ok: false, error: "Internal server error" }, 500);
 });
 
 app.notFound((c) => c.json({ ok: false, error: "Not found" }, 404));

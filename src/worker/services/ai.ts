@@ -2,6 +2,8 @@ import type { Env } from "../env";
 import type { AiMessage } from "@shared/types";
 import { listSettings } from "../db/settings";
 
+const DEFAULT_BASE_URL = "https://opencode.ai/zen/v1";
+
 export type AiConfig = {
   baseUrl: string;
   model: string;
@@ -10,21 +12,31 @@ export type AiConfig = {
 
 export function getAiConfig(env: Env, settings?: Record<string, string>): AiConfig {
   const s = settings ?? {};
+  // Base URL and model may be overridden from app settings so operators can
+  // point the app at their own inference endpoint. The API key, however, is a
+  // secret: it is never sourced from settings (settings are user-writable via
+  // /api/settings) and only comes from trusted environment configuration.
   const baseUrl =
-    s.OPENAI_BASE_URL ||
-    s.openai_base_url ||
-    env.OPENAI_BASE_URL ||
-    "https://opencode.ai/zen/v1";
+    s.OPENAI_BASE_URL || s.openai_base_url || env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
   const model =
-    s.OPENAI_MODEL ||
-    s.openai_model ||
-    env.OPENAI_MODEL ||
-    "deepseek-v4-flash-free";
-  const apiKey =
-    s.OPENAI_API_KEY ||
-    s.openai_api_key ||
-    env.OPENAI_API_KEY;
+    s.OPENAI_MODEL || s.openai_model || env.OPENAI_MODEL || "deepseek-v4-flash-free";
+  const apiKey = env.OPENAI_API_KEY;
   return { baseUrl, model, apiKey };
+}
+
+/**
+ * HTTP header-carrying outbound fetches must only talk to the operator's
+ * configured inference origin. A settings-overridden base URL points at an
+ * untrusted host, so secrets are stripped from those requests.
+ */
+export function isTrustedAiOrigin(baseUrl: string, env: Env): boolean {
+  try {
+    const url = new URL(baseUrl.replace(/\/+$/, ""));
+    const trusted = new URL((env.OPENAI_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, ""));
+    return url.origin === trusted.origin;
+  } catch {
+    return false;
+  }
 }
 
 export async function resolveAiConfig(env: Env): Promise<AiConfig> {
@@ -45,7 +57,11 @@ export async function chatCompletion(
   const cfg = await resolveAiConfig(env);
   const url = `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
+  // Never attach configured credentials to a non-trusted (settings-overridden)
+  // base URL — that would leak the operator's API key to an arbitrary host.
+  if (cfg.apiKey && isTrustedAiOrigin(cfg.baseUrl, env)) {
+    headers.Authorization = `Bearer ${cfg.apiKey}`;
+  }
   const res = await fetch(url, {
     method: "POST",
     headers,
@@ -58,7 +74,7 @@ export async function chatCompletion(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`AI request failed: ${res.status} ${text}`);
+    throw new Error(`AI request failed: ${res.status} ${text.slice(0, 200)}`);
   }
   const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
   return json.choices?.[0]?.message?.content ?? "";

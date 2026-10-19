@@ -3,7 +3,11 @@ import type { Env } from "../env";
 
 export function rateLimitMiddleware(): MiddlewareHandler<{ Bindings: Env }> {
   return async (c, next) => {
-    if (!c.req.path.startsWith("/api/ai/")) return next();
+    // Rate limit all mutating /api calls: beyond the AI cost gate this protects
+    // the D1 database and settings store from unauthenticated write floods.
+    if (!c.req.path.startsWith("/api/")) return next();
+    const method = c.req.method;
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) return next();
     const kv = c.env?.CACHE;
     if (!kv) return next();
     const ip =

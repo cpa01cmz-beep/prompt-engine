@@ -47,8 +47,8 @@ app.get("/web", async (c) => {
     const results = collectResults(json.RelatedTopics);
     return c.json({ ok: true, data: { query: q, results } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 

@@ -12,8 +12,8 @@ app.get("/", async (c) => {
     const data = await repo.listEvaluations(c.env.DB, targetType ?? undefined, targetId ?? undefined);
     return c.json({ ok: true, data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -25,8 +25,8 @@ app.get("/:id", async (c) => {
     if (!item) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: item });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
@@ -46,8 +46,8 @@ app.post("/", async (c) => {
     });
     return c.json({ ok: true, data: created }, 201);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return c.json({ ok: false, error: message }, 500);
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
   }
 });
 
