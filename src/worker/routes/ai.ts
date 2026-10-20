@@ -381,7 +381,7 @@ app.post("/test", async (c) => {
         model,
         messages,
         temperature: body.mode === "generate" ? 0.7 : 0,
-        max_tokens: body.mode === "generate" ? 200 : 5,
+        max_tokens: body.mode === "generate" ? 1200 : 5,
       }),
     });
     const text = await res.text();
