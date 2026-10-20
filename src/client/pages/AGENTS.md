@@ -1,13 +1,7 @@
 # AGENTS.md — src/client/pages
 
 ## Scope
-This folder is part of the Prompt Engine + Skills Engine Cloudflare-native project.
+Empty placeholder — no code lives here. The app renders `App.tsx` directly with feature screens from `../modules/`; there is no router or page directory in use.
 
-## Conventions
-- TypeScript strict mode.
-- Keep functions small and tested.
-- Maintain this AGENTS.md.
-- Store quality-gate evidence under `docs/evidence/`.
-
-## Commands
-- `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test:unit`
+## Rule
+Don't add code here without also registering it (or removing the folder); keep this file in sync with `App.tsx`.

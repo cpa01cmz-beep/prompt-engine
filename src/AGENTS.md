@@ -1,13 +1,11 @@
 # AGENTS.md — src
 
-## Scope
-This folder is part of the Prompt Engine + Skills Engine Cloudflare-native project.
+## Boundary
+- `client/` — React frontend (Vite). No secrets, no provider keys ever reach the browser; all AI calls go through the Worker `/api`.
+- `worker/` — Cloudflare Worker (Hono). Entry `worker/index.ts`.
+- `shared/` — framework-free TypeScript types, imported everywhere via `@shared/*` (tsconfig paths + Vite alias).
 
-## Conventions
-- TypeScript strict mode.
-- Keep functions small and tested.
-- Maintain this AGENTS.md.
-- Store quality-gate evidence under `docs/evidence/`.
-
-## Commands
-- `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test:unit`
+## Verification
+- `npm run typecheck` — `tsc -b` over `tsconfig.base.json` (strict) + client + worker project configs.
+- `npm run lint` — eslint flat config.
+- Unit tests may colocate here (vitest matches `src/**/*.test.*`) but currently live in `tests/unit/`.

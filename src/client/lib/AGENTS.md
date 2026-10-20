@@ -1,13 +1,10 @@
 # AGENTS.md — src/client/lib
 
 ## Scope
-This folder is part of the Prompt Engine + Skills Engine Cloudflare-native project.
+Client data + auth plumbing:
+- `api.ts` — `api` singleton: fetch wrapper that injects the Bearer token, sends JSON, unwraps the `ApiResponse<T>` envelope (also re-exports the type).
+- `auth.ts` — session token get/set/clear (single place for credential storage).
 
-## Conventions
-- TypeScript strict mode.
-- Keep functions small and tested.
-- Maintain this AGENTS.md.
-- Store quality-gate evidence under `docs/evidence/`.
-
-## Commands
-- `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test:unit`
+## Rules
+- All HTTP calls go through `api` — no raw `fetch` in components/modules.
+- On 401, clear the token and surface the login gate; never log tokens or error bodies.

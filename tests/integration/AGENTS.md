@@ -1,13 +1,8 @@
 # AGENTS.md — tests/integration
 
 ## Scope
-This folder is part of the Prompt Engine + Skills Engine Cloudflare-native project.
+`smoke.test.ts` — imports the whole worker app (`import app from "../../src/worker/index"`) and exercises route wiring in-process with a `mockEnv` (node-vitest, no D1/KV server needed).
 
-## Conventions
-- TypeScript strict mode.
-- Keep functions small and tested.
-- Maintain this AGENTS.md.
-- Store quality-gate evidence under `docs/evidence/`.
-
-## Commands
-- `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test:unit`
+## Rules
+- Use `app.request(...)` for requests — don't start a network server here; that's Playwright's job in `e2e`.
+- Keep the mock env aligned with `src/worker/env.ts`; if a new binding is added to `Env`, extend `mockEnv` or the test will fail closed (e.g. rate limiter returns 503 for mutations).
