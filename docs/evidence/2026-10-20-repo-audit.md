@@ -23,13 +23,20 @@ Repo: `cpa01cmz-beep/prompt-engine`, head `f7844be` before this change.
 | `npm run build` | recorded below after regeneration |
 | `npm run test:unit` | 38/38 passing across 7 files (was 4 failed before fix #1) |
 | `npm run test:integration` | 3/3 passing (1 file, 969 ms) |
-| `npm run test:e2e` | not executed locally (Playwright browsers not installed in this codespace); covered by CI `e2e` job |
+| `npm run test:e2e` | chromium: 34/34 passing locally (47 s); full chromium/firefox/webkit matrix verified in CI `e2e` job |
 
 ## Notes
 
 - Client-visible upstream detail leak: `tests/unit/outboundError.test.ts` is the security contract for `src/worker/lib/outboundError.ts`; it now passes.
 - CI runs `npm ci` (lockfile-driven) on Node from `.nvmrc` (24), `npm` cache via setup-node.
 - Concurrency group cancels superseded runs on the same ref.
+
+## Addendum — e2e root-cause (same day)
+
+- **Finding:** the client's `Login` gate (auth feature, `0002_auth.sql`) broke all 34 e2e specs — `appShell` never rendered, every test burned a 30 s timeout (the 29-minute "hang" in CI run 39396215706: 34 tests × timeouts × retries, html reporter hides progress).
+- **Second finding:** the local D1 database is empty on fresh checkouts (`/api/prompts` → 500 "Internal server error" until `wrangler d1 migrations apply DB --local`). CI `e2e` job now applies local migrations before Playwright runs.
+- **Fixes:** `tests/e2e/fixtures.ts` auto-seeds `localStorage["auth.token"]`; `installApiMocks` now defaults `GET /api/auth/me` (must live inside the mixer — its catch-all fulfils every route and would shadow a fixture-level route); `home.spec` installs API mocks like every other spec; artifact upload now also fires on cancelled runs.
+- **Verification:** chromium 34/34 in 47 s locally against the running dev server.
 
 ## Branch protection (applied post-push)
 

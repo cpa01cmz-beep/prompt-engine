@@ -1,6 +1,5 @@
 import { test, expect } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect } from "@playwright/test";
 import { installApiMocks } from "./helpers";
 
 async function scan(page: import("@playwright/test").Page) {
