@@ -12,7 +12,10 @@ import {
   buildResearchMessages,
   buildSearchSkillsMessages,
   buildRunSkillMessages,
+  isTrustedAiOrigin,
 } from "../services/ai";
+import { trustedProviderOrigins } from "../services/aiProvider";
+import { isPublicHttpsUrl } from "../lib/url";
 import type { AiMessage } from "@shared/types";
 import {
   ChatRequestSchema,
@@ -297,6 +300,30 @@ function decodeDuckUrl(raw: string): string {
 
 
 
+type BaseUrlResolution =
+  | { ok: true; baseUrl: string; apiKey: string }
+  | { ok: false; status: 400 | 403; error: string };
+
+/**
+ * Gate a caller-supplied base URL before any outbound fetch. It must be a
+ * public https origin, and the operator's env key may only ever be attached to
+ * an origin the operator trusts (OPENAI_BASE_URL / AI_PROVIDER_ALLOWLIST). Any
+ * other origin has to bring its own caller key, otherwise it is rejected —
+ * this closes the authenticated SSRF / API-key exfiltration path.
+ */
+function resolveBaseUrl(raw: string, env: Env, callerKey: string): BaseUrlResolution {
+  const baseUrl = raw.trim();
+  if (!isPublicHttpsUrl(baseUrl)) {
+    return { ok: false, status: 400, error: "baseUrl must be a public https URL" };
+  }
+  const trusted =
+    isTrustedAiOrigin(baseUrl, env) || trustedProviderOrigins(env).has(new URL(baseUrl).origin);
+  if (!callerKey && !trusted) {
+    return { ok: false, status: 403, error: "baseUrl origin is not allowed" };
+  }
+  return { ok: true, baseUrl, apiKey: callerKey || env.OPENAI_API_KEY || "" };
+}
+
 function bearerToken(c: { req: { header: (name: string) => string | undefined } }): string | null {
   const h = c.req.header("Authorization");
   if (!h) return null;
@@ -312,11 +339,10 @@ app.post("/models", async (c) => {
     if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
 
     const body = (await c.req.json().catch(() => ({}))) as { baseUrl?: string; apiKey?: string };
-    const baseUrl = (body.baseUrl ?? "").trim();
-    if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
-
-    // reuse trusted env key if no key provided
-    const apiKey = body.apiKey?.trim() || c.env.OPENAI_API_KEY || "";
+    if (!(body.baseUrl ?? "").trim()) return c.json({ ok: false, error: "baseUrl is required" }, 400);
+    const target = resolveBaseUrl(body.baseUrl ?? "", c.env, body.apiKey?.trim() ?? "");
+    if (!target.ok) return c.json({ ok: false, error: target.error }, target.status);
+    const { baseUrl, apiKey } = target;
     const url = `${baseUrl.replace(/\/+$/, "")}/models`;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
@@ -362,11 +388,14 @@ app.post("/test", async (c) => {
       mode?: string;
       goal?: string;
     };
-    const baseUrl = (body.baseUrl ?? "").trim();
+    const rawBaseUrl = (body.baseUrl ?? "").trim();
     const model = (body.model ?? "").trim();
-    const apiKey = (body.apiKey ?? "").trim() || c.env.OPENAI_API_KEY || "";
-    if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
+    if (!rawBaseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
     if (!model) return c.json({ ok: false, error: "model is required" }, 400);
+
+    const target = resolveBaseUrl(rawBaseUrl, c.env, (body.apiKey ?? "").trim());
+    if (!target.ok) return c.json({ ok: false, error: target.error }, target.status);
+    const { baseUrl, apiKey } = target;
 
     const goal = (body.goal ?? "Write a helpful assistant prompt").trim() || "Write a helpful assistant prompt";
     const messages =

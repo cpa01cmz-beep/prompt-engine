@@ -88,3 +88,72 @@ describe("schemas", () => {
     expect(GeneratePromptSchema.safeParse({ goal: "g", variables: ["a", ""] }).success).toBe(false);
   });
 });
+
+describe("GeneratePromptSchema aggregate context bound", () => {
+  const fill = (size: number, char = "a"): string => char.repeat(size);
+
+  it("rejects a context whose composed total exceeds the 64k limit", () => {
+    const parsed = GeneratePromptSchema.safeParse({
+      goal: fill(20_000),
+      role: fill(20_000),
+      constraints: fill(20_000),
+      examples: fill(20_000),
+      variables: Array.from({ length: 50 }, () => fill(20_000)),
+    });
+
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const message = parsed.error.issues.map((issue) => issue.message).join(" | ");
+      expect(message).toContain("64000");
+    }
+  });
+
+  it("accepts a context exactly at the limit", () => {
+    const parsed = GeneratePromptSchema.safeParse({
+      goal: fill(20_000),
+      role: fill(20_000),
+      constraints: fill(20_000),
+      examples: fill(4_000),
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects a context one character over the limit", () => {
+    const parsed = GeneratePromptSchema.safeParse({
+      goal: fill(20_000),
+      role: fill(20_000),
+      constraints: fill(20_000),
+      examples: fill(4_001),
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("counts the variable separator toward the total", () => {
+    const parsed = GeneratePromptSchema.safeParse({
+      goal: fill(20_000),
+      role: fill(20_000),
+      constraints: fill(20_000),
+      examples: fill(3_999),
+      variables: ["a", "b"],
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("keeps per-field caps after the aggregate bound", () => {
+    expect(GeneratePromptSchema.safeParse({ goal: fill(20_001) }).success).toBe(false);
+    expect(GeneratePromptSchema.safeParse({ goal: "g", role: fill(20_001) }).success).toBe(false);
+    expect(
+      GeneratePromptSchema.safeParse({
+        goal: "g",
+        variables: Array.from({ length: 51 }, (_, i) => `v${i}`),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("still accepts a goal-only context", () => {
+    expect(GeneratePromptSchema.safeParse({ goal: "write a summary" }).success).toBe(true);
+  });
+});

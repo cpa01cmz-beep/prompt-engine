@@ -3,6 +3,13 @@ import { z } from "zod";
 // Maximum serialized text any client-supplied field may carry. This bounds D1
 // writes, AI prompt construction, and Worker memory per request.
 const MAX_TEXT = 20_000;
+/**
+ * Aggregate cap for one generation context. Per-field caps alone still allow
+ * ~1 MB of legal input (50 × 20k variables plus every optional field), which is
+ * concatenated into a single upstream prompt, so the composed context is
+ * bounded here too.
+ */
+export const MAX_CONTEXT_CHARS = 64_000;
 const MAX_TITLE = 300;
 const MAX_SEARCH = 500;
 const MAX_ARRAY_ITEMS = 50;
@@ -18,6 +25,24 @@ function serializedJsonSize(value: unknown): number {
 }
 
 const BoundedText = z.string().max(MAX_TEXT);
+
+/** Characters a generation context would contribute once composed into a prompt. */
+function composedContextChars(value: {
+  goal: string;
+  role?: string | undefined;
+  variables?: string[] | undefined;
+  constraints?: string | undefined;
+  examples?: string | undefined;
+}): number {
+  const variables = (value.variables ?? []).join(", ");
+  return (
+    value.goal.length +
+    (value.role?.length ?? 0) +
+    (value.constraints?.length ?? 0) +
+    (value.examples?.length ?? 0) +
+    variables.length
+  );
+}
 const BoundedShortText = z.string().max(MAX_TITLE);
 const BoundedSearchText = z.string().max(MAX_SEARCH);
 const BoundedStrings = z.array(z.string().max(MAX_TEXT)).max(MAX_ARRAY_ITEMS);
@@ -89,13 +114,24 @@ export const ChatRequestSchema = z.object({
   messages: z.array(AiMessageSchema).min(1).max(40),
 });
 
-export const GeneratePromptSchema = z.object({
-  goal: BoundedText.min(1),
-  role: BoundedText.optional(),
-  variables: z.array(BoundedText.min(1)).max(50).optional(),
-  constraints: BoundedText.optional(),
-  examples: BoundedText.optional(),
-});
+export const GeneratePromptSchema = z
+  .object({
+    goal: BoundedText.min(1),
+    role: BoundedText.optional(),
+    variables: z.array(BoundedText.min(1)).max(50).optional(),
+    constraints: BoundedText.optional(),
+    examples: BoundedText.optional(),
+  })
+  .superRefine((value, ctx) => {
+    const total = composedContextChars(value);
+    if (total > MAX_CONTEXT_CHARS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Total context is " + total + " characters; the limit is " + MAX_CONTEXT_CHARS,
+        path: [],
+      });
+    }
+  });
 
 export const EvaluatePromptSchema = z.object({
   prompt: BoundedText.min(1),

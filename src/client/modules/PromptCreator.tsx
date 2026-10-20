@@ -83,6 +83,7 @@ export function PromptCreator() {
   const evaluate = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const data = await api.aiEvaluatePrompt(result);
       setEvalInfo(data.content);
@@ -96,6 +97,7 @@ export function PromptCreator() {
   const optimize = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const data = await api.aiOptimizePrompt(result);
       setResult(data.content);

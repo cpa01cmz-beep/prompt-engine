@@ -53,11 +53,13 @@ test.describe("prompt engine form flow (Creator)", () => {
 
   test("context fields reach /api/ai/generate-prompt and empty fields are omitted", async ({ page }) => {
     const bodies: string[] = [];
+    const { panel } = await openPromptCreator(page);
+    // Registered AFTER installApiMocks so it wins (Playwright routes are LIFO);
+    // it observes the body, then falls through to the API mocks.
     await page.route("**/api/ai/generate-prompt", (route) => {
       bodies.push(route.request().postData() ?? "");
       return route.fallback();
     });
-    const { panel } = await openPromptCreator(page);
 
     await panel.getByRole("button", { name: "Add context" }).click();
     await page.getByLabel("Goal").fill("Write a launch email");

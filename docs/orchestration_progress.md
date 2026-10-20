@@ -55,20 +55,22 @@
 
 | Gate | Condition | Owner | State | Evidence |
 |---|---|---|---|---|
-| 0 | lint/typecheck green | devs | 🟢 backend: exit 0 · frontend pending | docs/evidence/phase2-backend-verification.md |
-| 0 | build green | devs | ⬜ pending | |
-| 1 | unit tests 100% pass incl. composition tests | QA | 🟡 backend partial: unit 52/52 · integration 3/3 | docs/evidence/phase2-backend-verification.md |
-| 1 | coverage report archived | QA | ⬜ pending | |
-| 2 | integration tests pass; contract `{ok,data,error}` intact w/ optional fields | QA | ⬜ pending | |
+| 0 | lint/typecheck green | devs | ✅ pass (both agents, exit 0) | docs/evidence/phase2-{backend,frontend}-verification.md |
+| 0 | build green | devs | ✅ pass (187.77 kB JS) | docs/evidence/phase2-frontend-verification.md |
+| 1 | unit tests 100% pass incl. composition tests | QA | ✅ 52/52 (8 files) · critical paths: ai.ts 74.6%, schemas.ts 77.8% | docs/evidence/iter2-gates-1-2-report.md |
+| 1 | coverage report archived | QA | ✅ iter2-gate1-unit-coverage.log (stmts 27.47%, branch 19.52%) | docs/evidence/iter2-gate1-unit-coverage.log |
+| 2 | integration tests pass; contract `{ok,data,error}` intact w/ optional fields | QA | ✅ 3/3 · envelope contract unchanged | docs/evidence/iter2-gate2-integration.log |
 | 2 | dist build artifact produced | QA | ⬜ pending | |
-| 3 | E2E 0 failures × chromium/firefox/webkit | QA | ⬜ pending | |
-| 3 | axe a11y scan clean per screen | QA | ⬜ pending | |
-| 3 | no unhandled console/pageerror in traced runs | QA | ⬜ pending | |
-| 4 | security scan + perf/a11y/resilience audit with remediations | auditor | ⬜ pending | |
+| 3 | E2E 0 failures × chromium/firefox/webkit | QA | ✅ 108/108 across 3 browsers (8.0m) | docs/evidence/iter2-gate3-e2e.log |
+| 3 | axe a11y scan clean per screen | QA | ✅ 21/21 screens, 0 violations | docs/evidence/iter2-gates-3-report.md |
+| 3 | no unhandled console/pageerror in traced runs | QA | ✅ 0 pageerror, 0 console.error | docs/evidence/iter2-gate3-console.log |
+| 4 | security scan + perf/a11y/resilience audit with remediations | auditor | ❌ FAIL (conditional) — H-1 SSRF in /api/ai/models & /test (pre-existing); M-1 no aggregate context cap (new); LOWs L-1/L-2 | docs/evidence/iter2-gates-4-report.md |
 | ✅ Sign-off | docs complete & consistent; evidence under docs/evidence/ | Lead | ⬜ pending | |
 
 ## 6. Milestone log
 
 - 2026-10-20 Phase 1 started; codebase recon completed (16-module map, verified ignored-fields bug).
 - 2026-10-20 Phase 1 complete: `docs/phase1-research.md` (research analyst), `docs/specifications.md` (this iteration's spec), `docs/orchestration_progress.md`.
-- 2026-10-20 Phase 2 backend complete (ai-engineer): context-aware `GeneratePromptSchema` + message composition + client `aiGeneratePrompt(goal, ctx)`; typecheck/lint 0, unit 52/52, integration 3/3. Deviations logged: no `.strict()` (matches existing zod style); whitespace-only goal still accepted per `BoundedText.min(1)` contract. Evidence: docs/evidence/phase2-backend-verification.md.
+- 2026-10-20 Gate 3 complete (test-automation-engineer): `npm run test:e2e` exit 0 — 108/108 passed across chromium/firefox/webkit (8.0m, retries=0). Axe a11y 21/21 clean; console/pageerror spec 0 errors. One test-only artifact fixed (Playwright LIFO route shadowing in flows.spec.ts:54); trace confirmed app payload correct; no product code touched. Traces: docs/evidence/iter2-gate3-traces/.
+- 2026-10-20 Gates 1-2 complete (api-tester): lint/typecheck/build exit 0; unit 52/52 with coverage (critical paths ai.ts 74.6%, schemas.ts 77.8%); integration 3/3; envelope contract unchanged. Note: `@vitest/coverage-v8` was missing and installed `--no-save`. Evidence: docs/evidence/iter2-gates-1-2-report.md.
+- 2026-10-20 Phase 2 complete (ai-engineer + frontend-developer): context-aware `GeneratePromptSchema` + message composition + client `aiGeneratePrompt(goal, ctx)`; grouped navigation with primary journey CTA; single-flow PromptCreator; E2E request-body test. Deviations: no `.strict()` (matches existing zod style); whitespace-only goal still accepted per `BoundedText.min(1)` contract; group headings use role="group" to avoid selector ambiguity. Commit 57b6ad8; evidence docs/evidence/phase2-{backend,frontend}-verification.md.
