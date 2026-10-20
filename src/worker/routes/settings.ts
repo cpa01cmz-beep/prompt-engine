@@ -7,7 +7,13 @@ import * as auth from "../db/auth";
 
 const app = new Hono<{ Bindings: Env }>();
 
-const AUTHED_KEYS = new Set(["ai.provider", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]);
+const AUTHED_KEYS = new Set([
+  "ai.provider",
+  "ai.providers",
+  "OPENAI_API_KEY",
+  "OPENAI_BASE_URL",
+  "OPENAI_MODEL",
+]);
 const MAX_VALUE_BYTES = 16384;
 
 function bearerToken(c: { req: { header: (name: string) => string | undefined } }): string | null {
