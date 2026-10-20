@@ -30,7 +30,7 @@ Cloudflare-native **Prompt Engine + Skills Engine**: React/Vite client served by
 ## API / security rules
 - Envelope everywhere: `{ ok: true, data }` / `{ ok: false, error }`.
 - **Never surface upstream/API error bodies** — use the shared `mapOutboundError` helper in catch blocks (contract: `tests/unit/outboundError.test.ts`).
-- Bodies are Zod-bounded: TEXT ≤ 20 000, TITLE ≤ 300, arrays ≤ 50, JSON ≤ 32 KB; composed AI context ≤ `MAX_CONTEXT_CHARS` 64 000 (`src/worker/schemas.ts`).
+- Bodies are Zod-bounded: TEXT ≤ 50 000, TITLE ≤ 300, arrays ≤ 50, JSON ≤ 32 KB; composed AI context ≤ `MAX_CONTEXT_CHARS` 200 000 (`src/worker/schemas.ts`).
 - AI provider is OpenAI-compatible `chat/completions` (non-streaming), env `OPENAI_BASE_URL` / `OPENAI_MODEL` / `OPENAI_API_KEY`. `resolveBaseUrl` validates caller-supplied baseUrls (SSRF guard) — the env key is attached only to trusted origins. Optional `AI_PROVIDER_ALLOWLIST` (comma-separated `https://` origins).
 - Rate limiter **fails closed**: mutating requests → 503 when the `CACHE` KV binding is missing.
 

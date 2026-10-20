@@ -1,15 +1,16 @@
 import { z } from "zod";
 
 // Maximum serialized text any client-supplied field may carry. This bounds D1
-// writes, AI prompt construction, and Worker memory per request.
-const MAX_TEXT = 20_000;
+// writes, AI prompt construction, and Worker memory per request. Sized for
+// providers with large context windows (hundreds of thousands of tokens).
+const MAX_TEXT = 50_000;
 /**
  * Aggregate cap for one generation context. Per-field caps alone still allow
- * ~1 MB of legal input (50 × 20k variables plus every optional field), which is
- * concatenated into a single upstream prompt, so the composed context is
+ * ~2.7 MB of legal input (50 × 50k variables plus every optional field), which
+ * is concatenated into a single upstream prompt, so the composed context is
  * bounded here too.
  */
-export const MAX_CONTEXT_CHARS = 64_000;
+export const MAX_CONTEXT_CHARS = 200_000;
 const MAX_TITLE = 300;
 const MAX_SEARCH = 500;
 const MAX_ARRAY_ITEMS = 50;

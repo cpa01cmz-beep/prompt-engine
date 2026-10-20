@@ -52,7 +52,7 @@ describe("schemas", () => {
   });
 
   it("rejects context fields exceeding text bounds", () => {
-    const long = "x".repeat(20_001);
+    const long = "x".repeat(50_001);
     expect(GeneratePromptSchema.safeParse({ goal: "g", role: long }).success).toBe(false);
     expect(GeneratePromptSchema.safeParse({ goal: long }).success).toBe(false);
   });
@@ -92,7 +92,7 @@ describe("schemas", () => {
 describe("GeneratePromptSchema aggregate context bound", () => {
   const fill = (size: number, char = "a"): string => char.repeat(size);
 
-  it("rejects a context whose composed total exceeds the 64k limit", () => {
+  it("rejects a context whose composed total exceeds the aggregate limit", () => {
     const parsed = GeneratePromptSchema.safeParse({
       goal: fill(20_000),
       role: fill(20_000),
@@ -104,16 +104,16 @@ describe("GeneratePromptSchema aggregate context bound", () => {
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
       const message = parsed.error.issues.map((issue) => issue.message).join(" | ");
-      expect(message).toContain("64000");
+      expect(message).toContain("200000");
     }
   });
 
   it("accepts a context exactly at the limit", () => {
     const parsed = GeneratePromptSchema.safeParse({
-      goal: fill(20_000),
-      role: fill(20_000),
-      constraints: fill(20_000),
-      examples: fill(4_000),
+      goal: fill(50_000),
+      role: fill(50_000),
+      constraints: fill(50_000),
+      examples: fill(50_000),
     });
 
     expect(parsed.success).toBe(true);
@@ -121,30 +121,41 @@ describe("GeneratePromptSchema aggregate context bound", () => {
 
   it("rejects a context one character over the limit", () => {
     const parsed = GeneratePromptSchema.safeParse({
-      goal: fill(20_000),
-      role: fill(20_000),
-      constraints: fill(20_000),
-      examples: fill(4_001),
+      goal: fill(50_000),
+      role: fill(50_000),
+      constraints: fill(50_000),
+      examples: fill(50_000),
+      variables: ["a"],
     });
 
     expect(parsed.success).toBe(false);
   });
 
   it("counts the variable separator toward the total", () => {
-    const parsed = GeneratePromptSchema.safeParse({
-      goal: fill(20_000),
-      role: fill(20_000),
-      constraints: fill(20_000),
-      examples: fill(3_999),
+    // "a, b" (4 chars) costs 2 more than "ab": totals land at 199,999 and
+    // 200,001 — only the separator-counted case crosses the aggregate cap.
+    const atLimit = GeneratePromptSchema.safeParse({
+      goal: fill(50_000),
+      role: fill(50_000),
+      constraints: fill(50_000),
+      examples: fill(49_995),
+      variables: ["a", "b"],
+    });
+    const oneOver = GeneratePromptSchema.safeParse({
+      goal: fill(50_000),
+      role: fill(50_000),
+      constraints: fill(50_000),
+      examples: fill(49_997),
       variables: ["a", "b"],
     });
 
-    expect(parsed.success).toBe(false);
+    expect(atLimit.success).toBe(true);
+    expect(oneOver.success).toBe(false);
   });
 
   it("keeps per-field caps after the aggregate bound", () => {
-    expect(GeneratePromptSchema.safeParse({ goal: fill(20_001) }).success).toBe(false);
-    expect(GeneratePromptSchema.safeParse({ goal: "g", role: fill(20_001) }).success).toBe(false);
+    expect(GeneratePromptSchema.safeParse({ goal: fill(50_001) }).success).toBe(false);
+    expect(GeneratePromptSchema.safeParse({ goal: "g", role: fill(50_001) }).success).toBe(false);
     expect(
       GeneratePromptSchema.safeParse({
         goal: "g",

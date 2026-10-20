@@ -1,7 +1,7 @@
 # AGENTS.md — src/worker
 
 ## Scope
-Cloudflare Worker (Hono), entry `index.ts`: wires middleware, then all 9 feature routes. Typed bindings/env in `env.ts` (`DB` D1, `CACHE` KV, `ASSETS`, `OPENAI_*`, optional `AI_PROVIDER_ALLOWLIST`). Zod payload bounds in `schemas.ts` (TEXT ≤ 20 000, TITLE ≤ 300, SEARCH ≤ 500, arrays ≤ 50, JSON ≤ 32 KB, `MAX_CONTEXT_CHARS` 64 000).
+Cloudflare Worker (Hono), entry `index.ts`: wires middleware, then all 9 feature routes. Typed bindings/env in `env.ts` (`DB` D1, `CACHE` KV, `ASSETS`, `OPENAI_*`, optional `AI_PROVIDER_ALLOWLIST`). Zod payload bounds in `schemas.ts` (TEXT ≤ 50 000, TITLE ≤ 300, SEARCH ≤ 500, arrays ≤ 50, JSON ≤ 32 KB, `MAX_CONTEXT_CHARS` 200 000).
 
 ## Rules
 - Middleware order is fixed: `securityHeaders` → `corsMiddleware` → `rateLimitMiddleware`, applied `app.use("*", …)` before routes.
