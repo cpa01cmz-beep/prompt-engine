@@ -12,11 +12,14 @@ export type AiConfig = {
   baseUrl: string;
   model: string;
   apiKey?: string;
+  apiKeyFromSettings?: boolean;
 };
 
 export function getAiConfig(env: Env, settings?: Record<string, string>): AiConfig {
   const e = (env ?? {}) as Env;
-  const apiKey = e.OPENAI_API_KEY;
+  const settingsApiKey = settings?.["OPENAI_API_KEY"];
+  const apiKey = e.OPENAI_API_KEY || settingsApiKey;
+  const apiKeyFromSettings = !e.OPENAI_API_KEY && Boolean(settingsApiKey);
   // Operators can point the app at their own inference endpoint via the
   // user-writable `ai.provider` setting. Anything else in settings (including
   // legacy OPENAI_BASE_URL/OPENAI_MODEL keys) is ignored: that key space is
@@ -33,7 +36,7 @@ export function getAiConfig(env: Env, settings?: Record<string, string>): AiConf
   }
   const parsed = parseAiProvider(provider, env);
   if (parsed) {
-    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey };
+    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey, apiKeyFromSettings };
   }
   // Fall back to trusted environment configuration when the setting is
   // absent or fails validation.
@@ -41,6 +44,7 @@ export function getAiConfig(env: Env, settings?: Record<string, string>): AiConf
     baseUrl: e.OPENAI_BASE_URL || DEFAULT_BASE_URL,
     model: e.OPENAI_MODEL || DEFAULT_MODEL,
     apiKey,
+    apiKeyFromSettings,
   };
 }
 
@@ -82,7 +86,7 @@ export async function chatCompletion(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   // Never attach configured credentials to a non-trusted (settings-overridden)
   // base URL — that would leak the operator's API key to an arbitrary host.
-  if (cfg.apiKey && isTrustedAiOrigin(cfg.baseUrl, env)) {
+  if (cfg.apiKey && (cfg.apiKeyFromSettings || isTrustedAiOrigin(cfg.baseUrl, env))) {
     headers.Authorization = `Bearer ${cfg.apiKey}`;
   }
   const res = await fetchWithTimeout(

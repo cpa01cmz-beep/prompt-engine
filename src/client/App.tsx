@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PromptCreator } from "./modules/PromptCreator";
 import { PromptEvaluator } from "./modules/PromptEvaluator";
 import { PromptOptimizer } from "./modules/PromptOptimizer";
@@ -14,7 +14,10 @@ import { SkillEvaluator } from "./modules/SkillEvaluator";
 import { SkillLibrary } from "./modules/SkillLibrary";
 import { SkillLab } from "./modules/SkillLab";
 import { SettingsModal } from "./components/SettingsModal";
+import { Login } from "./components/Login";
+import { getToken, clearToken } from "./lib/auth";
 import { Button } from "./components/ui";
+import { api } from "./lib/api";
 import { cn } from "./components/utils";
 
 type Engine = "prompt" | "skill";
@@ -88,16 +91,40 @@ function renderSkillModule(active: string): JSX.Element | null {
 }
 
 export default function App(): JSX.Element {
+  const [user, setUser] = useState<{ id: string; username: string; role: string } | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [engine, setEngine] = useState<Engine>("prompt");
   const [active, setActive] = useState<string>("creator");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const modules = engine === "prompt" ? promptModules : skillModules;
   const current = modules.find((m) => m.id === active) ?? modules[0];
 
+  useEffect(() => {
+    if (!getToken()) {
+      setAuthLoading(false);
+      return;
+    }
+    api
+      .getMe()
+      .then((u) => setUser(u))
+      .catch(() => {
+        clearToken();
+        setUser(null);
+      })
+      .finally(() => setAuthLoading(false));
+  }, []);
+
   const switchEngine = (next: Engine): void => {
     setEngine(next);
     setActive(next === "prompt" ? "creator" : "search");
   };
+
+  if (authLoading) {
+    return <div className="flex min-h-screen items-center justify-center text-slate-600">Loading...</div>;
+  }
+  if (!user) {
+    return <Login onLogin={(u) => setUser(u)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-indigo-50/40 to-white text-slate-900">
@@ -145,6 +172,18 @@ export default function App(): JSX.Element {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                api.logout().catch(() => {});
+                clearToken();
+                setUser(null);
+              }}
+              aria-label="Logout"
+              className="rounded-full px-3 py-1.5"
+            >
+              Logout ({user.username})
+            </Button>
             <Button
               variant="secondary"
               onClick={() => setSettingsOpen(true)}

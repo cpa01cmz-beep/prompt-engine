@@ -3,11 +3,30 @@ import type { Env } from "../env";
 import * as repo from "../db/settings";
 import { SettingsValueSchema } from "../schemas";
 import { parseAiProvider } from "../services/aiProvider";
+import * as auth from "../db/auth";
 
 const app = new Hono<{ Bindings: Env }>();
 
+const AUTHED_KEYS = new Set(["ai.provider", "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL"]);
+const MAX_VALUE_BYTES = 16384;
+
+function bearerToken(c: { req: { header: (name: string) => string | undefined } }): string | null {
+  const h = c.req.header("Authorization");
+  if (!h) return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+async function requireUser(c: { env: Env; req: { header: (name: string) => string | undefined } }): Promise<{ id: string; username: string; role: string } | null> {
+  const token = bearerToken(c);
+  if (!token) return null;
+  return auth.getSessionUser(c.env.DB, token);
+}
+
 app.get("/", async (c) => {
   try {
+    const user = await requireUser(c);
+    if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
     const data = await repo.listSettings(c.env.DB);
     return c.json({ ok: true, data });
   } catch (err) {
@@ -18,11 +37,10 @@ app.get("/", async (c) => {
 
 app.get("/:key", async (c) => {
   try {
+    const user = await requireUser(c);
+    if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
     const key = c.req.param("key");
-    if (isRejectedKey(key)) {
-      return c.json({ ok: false, error: "Key not allowed" }, 400);
-    }
-    const value = await repo.getSettingTyped(c.env.DB, key);
+    const value = await repo.getSetting(c.env.DB, key);
     if (value === null) return c.json({ ok: false, error: "Not found" }, 404);
     return c.json({ ok: true, data: { key, value } });
   } catch (err) {
@@ -31,56 +49,58 @@ app.get("/:key", async (c) => {
   }
 });
 
-// Settings are writable through an unauthenticated endpoint, so the key space
-// must stay small and secret-free. Settings must never store credentials (the
-// AI config reads secrets from env only) and abusive values must be bounded.
-const ALLOWED_KEY_RE = /^[A-Za-z0-9._-]{1,64}$/;
-const FORBIDDEN_KEY_RE = /(api[_-]?key|secret|token|password|credential)/i;
-const MAX_VALUE_BYTES = 16384;
-
-// Settings are writable by anonymous users, so the key space must stay minimal:
-// only keys the app actually consumes get written. Everything else (including
-// legacy OPENAI_* keys) is rejected with 400 instead of being stored.
-const WRITABLE_KEYS = new Set(["ai.provider"]);
-
-function isRejectedKey(key: string): boolean {
-  return !ALLOWED_KEY_RE.test(key) || FORBIDDEN_KEY_RE.test(key);
-}
-
 app.put("/:key", async (c) => {
   try {
+    const user = await requireUser(c);
+    if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
     const key = c.req.param("key");
-    if (!key) return c.json({ ok: false, error: "Missing required param: key" }, 400);
-    if (isRejectedKey(key) || !WRITABLE_KEYS.has(key)) {
+    if (!key || !AUTHED_KEYS.has(key)) {
       return c.json({ ok: false, error: "Key not allowed" }, 400);
     }
-    let body: unknown;
+
+    const raw = await c.req.json().catch(() => null);
+    const parsed = SettingsValueSchema.safeParse(raw);
+    if (!parsed.success) {
+      return c.json(
+        { ok: false, error: parsed.success ? "Invalid body" : parsed.error.message },
+        400,
+      );
+    }
+
+    const value = parsed.data.value;
+
+    if (key === "ai.provider") {
+      let provider: unknown = value;
+      if (typeof value === "string") {
+        try {
+          provider = JSON.parse(value);
+        } catch {
+          provider = undefined;
+        }
+      }
+      const validated = parseAiProvider(provider, c.env);
+      if (!validated) {
+        return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
+      }
+      const toStore = JSON.stringify({ baseUrl: validated.baseUrl, model: validated.model });
+      if (toStore.length > MAX_VALUE_BYTES) {
+        return c.json({ ok: false, error: "Value too large" }, 400);
+      }
+      await repo.setSetting(c.env.DB, key, toStore);
+      return c.json({ ok: true, data: { key, value: { baseUrl: validated.baseUrl, model: validated.model } } });
+    }
+
+    let strValue: string;
     try {
-      body = await c.req.json();
+      strValue = typeof value === "string" ? value : JSON.stringify(value);
     } catch {
-      return c.json({ ok: false, error: "Invalid JSON body" }, 400);
-    }
-    const parsed = SettingsValueSchema.safeParse(body);
-    if (!parsed.success || !parsed.data) {
-      return c.json({ ok: false, error: parsed.success ? "Invalid body" : parsed.error.message }, 400);
-    }
-    // The value space mirrors what the app reads back. `ai.provider` is the
-    // only writable key and it must be a vetted provider shape (https origins
-    // only) — anything else is rejected before it reaches D1.
-    if (key === "ai.provider" && !parseAiProvider(parsed.data.value, c.env)) {
-      return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
-    }
-    const serialized = JSON.stringify(parsed.data.value);
-    // JSON.stringify returns `undefined` for `undefined` inputs; guard against
-    // that (and any other non-serializable value) instead of dereferencing it.
-    if (serialized === undefined) {
       return c.json({ ok: false, error: "Value is not JSON-serializable" }, 400);
     }
-    if (new TextEncoder().encode(serialized).length > MAX_VALUE_BYTES) {
+    if (strValue.length > MAX_VALUE_BYTES) {
       return c.json({ ok: false, error: "Value too large" }, 400);
     }
-    await repo.setSettingTyped(c.env.DB, key, parsed.data.value);
-    return c.json({ ok: true, data: { key, value: parsed.data.value } });
+    await repo.setSetting(c.env.DB, key, strValue);
+    return c.json({ ok: true, data: { key, value: strValue } });
   } catch (err) {
     console.error("Request failed:", err);
     return c.json({ ok: false, error: "Internal server error" }, 500);

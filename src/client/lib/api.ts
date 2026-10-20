@@ -1,5 +1,7 @@
 import type { Prompt, Skill, Template, WebSearchResult, SkillSearchResponse } from "@shared/types";
 
+import { getToken } from "./auth";
+
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -7,6 +9,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -81,4 +84,22 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ value }),
     }),
+  login: (username: string, password: string) =>
+    request<{ token: string; user: { id: string; username: string; role: string } }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  getMe: () => request<{ id: string; username: string; role: string }>("/api/auth/me"),
+  logout: () => request<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/api/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+  createUser: (username: string, password: string, role?: "admin" | "user") =>
+    request<{ id: string; username: string; role: string }>("/api/auth/users", {
+      method: "POST",
+      body: JSON.stringify({ username, password, role }),
+    }),
+
 };

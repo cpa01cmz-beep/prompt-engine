@@ -10,6 +10,7 @@ import skills from "./routes/skills";
 import evaluations from "./routes/evaluations";
 import settings from "./routes/settings";
 import ai from "./routes/ai";
+import auth from "./routes/auth";
 import search from "./routes/search";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -34,6 +35,7 @@ app.route("/api/skills", skills);
 app.route("/api/evaluations", evaluations);
 app.route("/api/settings", settings);
 app.route("/api/ai", ai);
+app.route("/api/auth", auth);
 app.route("/api/search", search);
 
 // Unmatched /api traffic must never fall through to the SPA shell: an HTML
