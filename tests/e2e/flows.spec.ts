@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { openPromptCreator, openSkillCreator } from "./helpers";
 
 test.describe("prompt engine form flow (Creator)", () => {

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { installApiMocks, openPromptLibrary, openSkillSearch } from "./helpers";
 
 test.describe("skill search flow", () => {

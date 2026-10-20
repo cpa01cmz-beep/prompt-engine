@@ -1,7 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
+import { installApiMocks } from "./helpers";
 
 test.describe("home", () => {
   test("loads and shows the default prompt engine view", async ({ page }) => {
+    await installApiMocks(page);
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Prompt & Skills Engine" })).toBeVisible();
@@ -18,6 +20,7 @@ test.describe("home", () => {
   });
 
   test("engines switch and reset to their first module", async ({ page }) => {
+    await installApiMocks(page);
     await page.goto("/");
 
     await page.getByRole("button", { name: "Skills Engine" }).click();

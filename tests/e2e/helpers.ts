@@ -62,6 +62,10 @@ function defaultHandler(key: string): MockResponse | undefined {
       return ok(DEFAULT_SKILLS);
     case "GET /api/templates":
       return ok(DEFAULT_TEMPLATES);
+    case "GET /api/auth/me":
+      // The Login gate in App.tsx trusts a token + this endpoint; return an
+      // authenticated admin-shaped user so specs skip the real auth backend.
+      return ok({ id: "u-e2e", username: "e2e-user", role: "admin" });
     case "POST /api/ai/chat":
       return ok({ content: "Mocked AI response" });
     case "POST /api/ai/generate-prompt":
@@ -147,6 +151,7 @@ export async function installApiMocks(page: Page) {
     "GET /api/prompts",
     "GET /api/skills",
     "GET /api/templates",
+    "GET /api/auth/me",
     "POST /api/ai/chat",
     "POST /api/ai/generate-prompt",
     "POST /api/ai/evaluate-prompt",

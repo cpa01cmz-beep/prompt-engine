@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { installApiMocks } from "./helpers";
 const PROMPT_MODULES = [
   { title: "Creator", id: "creator" },
