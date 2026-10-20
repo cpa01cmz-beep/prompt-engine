@@ -5,9 +5,14 @@ import { mapOutboundError } from "../../src/worker/lib/outboundError";
 
 const UPSTREAM_DETAIL = '__upstream_detail__ {"error":"internal"}';
 
+// KV namespace stub so the rate limiter's happy path passes and requests
+// reach the routes under test.
 const mockEnv = {
   DB: {} as unknown,
-  CACHE: undefined as unknown,
+  CACHE: {
+    get: async () => "0",
+    put: async () => {},
+  } as unknown,
 };
 
 /** Minimal stand-in for a Hono context: c.json is the only capability used. */
@@ -57,8 +62,13 @@ describe("mapOutboundError", () => {
 
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ ok: false, error: "Upstream AI error" });
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-    expect(String(consoleErrorSpy.mock.calls[0]?.[1])).toContain("upstream_detail");
+    // resolveAiConfig also now LOGS the (stubbed) settings-store failure on
+    // top of the upstream failure itself; assert that the upstream detail
+    // appears in server-side logs (it must have been logged) without
+    // pinning an exact call count.
+    expect(
+      consoleErrorSpy.mock.calls.some((call) => String(call[1]).includes("upstream_detail")),
+    ).toBe(true);
   });
 
   it("speaking to a rejecting upstream also yields the generic 502", async () => {

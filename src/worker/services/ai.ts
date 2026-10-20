@@ -63,7 +63,10 @@ export async function resolveAiConfig(env: Env): Promise<AiConfig> {
   let settings: Record<string, string> = {};
   try {
     settings = await listSettings(env.DB);
-  } catch {
+  } catch (err) {
+    // A broken settings store silently masking itself as "no provider
+    // settings" makes diagnosis impossible; log it and fall back to defaults.
+    console.error("resolveAiConfig: failed to load settings", err);
     settings = {};
   }
   return getAiConfig(env, settings);

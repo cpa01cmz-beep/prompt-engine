@@ -146,6 +146,27 @@ export const SkillCandidateSchema = z.object({
 export const SkillCandidatesSchema = z.array(SkillCandidateSchema);
 
 export type SkillCandidate = z.infer<typeof SkillCandidateSchema>;
+
+// AI model outputs. These bound the *structured* part of AI responses: model
+// text is untrusted, so anything that claims to be JSON must validate against
+// one of these schemas before a route handler returns it as data.
+export const PromptEvaluationSchema = z.object({
+  score: z.number().min(0).max(100).optional(),
+  feedback: z.array(BoundedShortText).max(MAX_ARRAY_ITEMS).optional(),
+});
+
+export const SkillDefinitionSchema = z.object({
+  name: BoundedShortText.min(1).optional(),
+  description: BoundedShortText.optional(),
+  instructions: BoundedText.optional(),
+  tools: z.array(BoundedShortText).max(MAX_ARRAY_ITEMS).optional(),
+});
+
+export const PromptComparisonSchema = z.object({
+  winner: z.enum(["A", "B"]).optional(),
+  scores: z.record(z.number()).optional(),
+  rationale: BoundedText.optional(),
+});
 export type PromptInput = z.infer<typeof PromptInputSchema>;
 export type TemplateInput = z.infer<typeof TemplateInputSchema>;
 export type SkillInput = z.infer<typeof SkillInputSchema>;

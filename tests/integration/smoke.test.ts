@@ -3,7 +3,13 @@ import app from "../../src/worker/index";
 
 const mockEnv = {
   DB: {} as unknown,
-  CACHE: undefined as unknown,
+  // Working KV stub: real deployments always have the CACHE binding, and the
+  // rate limiter now fails CLOSED (503) for mutating methods when it is
+  // missing, which would mask the route behavior under test.
+  CACHE: {
+    get: async () => "0",
+    put: async () => {},
+  } as unknown,
   ASSETS: { fetch: async () => new Response("not found", { status: 404 }) } as unknown,
 };
 

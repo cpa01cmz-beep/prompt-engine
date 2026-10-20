@@ -1,4 +1,4 @@
-import type { Prompt, Skill, Template, WebSearchResult } from "@shared/types";
+import type { Prompt, Skill, Template, WebSearchResult, SkillSearchResponse } from "@shared/types";
 
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -71,6 +71,8 @@ export const api = {
     request<{ content: string }>("/api/ai/evaluate-skill", { method: "POST", body: JSON.stringify({ skill }) }),
   aiOptimizeSkill: (skill: string) =>
     request<{ content: string }>("/api/ai/optimize-skill", { method: "POST", body: JSON.stringify({ skill }) }),
+  aiSearchSkills: (query: string) =>
+    request<SkillSearchResponse>("/api/ai/search-skills", { method: "POST", body: JSON.stringify({ query }) }),
 
   getSettings: () => request<Record<string, string>>("/api/settings"),
   getSetting: <T>(key: string) => request<{ key: string; value: T }>(`/api/settings/${encodeURIComponent(key)}`),

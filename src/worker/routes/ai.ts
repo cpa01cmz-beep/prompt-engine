@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import {
   chatCompletion,
-  parseJsonFromText,
   buildCreatePromptMessages,
   buildEvaluatePromptMessages,
   buildOptimizePromptMessages,
@@ -28,27 +27,27 @@ import {
   ComparePromptsSchema,
   RunSkillSchema,
   SkillCandidatesSchema,
+  PromptEvaluationSchema,
+  SkillDefinitionSchema,
+  PromptComparisonSchema,
 } from "../schemas";
 import { fetchWithTimeout } from "../lib/fetchTimeout";
 import { mapOutboundError } from "../lib/outboundError";
+import { parseModelJson } from "../lib/modelJson";
 
 const SEARCH_TIMEOUT_MS = 10_000;
 const MAX_HTML_BYTES = 512 * 1024;
 
 /**
- * Parse the model's candidate-skills output via parseJsonFromText and validate
- * the shape with zod. Anything malformed becomes an empty list rather than raw
- * model text being surfaced as structured data.
+ * Constants defining safe fallbacks for structured AI output: when the model's
+ * JSON does not validate, the structured field degrades to `null` instead of
+ * carrying raw, unvalidated model text. The unmodified `content` string is
+ * still returned separately for display purposes.
  */
+const PARSE_FALLBACK_NULL = null;
+
 function parseSkillCandidates(content: string): Array<{ name: string; description?: string; url?: string }> {
-  let parsed: unknown;
-  try {
-    parsed = parseJsonFromText(content);
-  } catch {
-    parsed = null;
-  }
-  const result = SkillCandidatesSchema.safeParse(parsed);
-  return result.success ? result.data : [];
+  return parseModelJson(SkillCandidatesSchema, content, []);
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -91,13 +90,10 @@ app.post("/evaluate-prompt", async (c) => {
     }
     const messages = buildEvaluatePromptMessages(parsed.data.prompt);
     const content = await chatCompletion(c.env, messages, { temperature: 0.2 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, evaluation: parsedJson } });
+    // Zod-validated evaluation; malformed model output degrades to null
+    // instead of returning raw unvalidated text as structured data.
+    const evaluation = parseModelJson(PromptEvaluationSchema, content, PARSE_FALLBACK_NULL);
+    return c.json({ ok: true, data: { content, evaluation } });
   } catch (err) {
     return mapOutboundError(c, err);
   }
@@ -127,13 +123,8 @@ app.post("/generate-skill", async (c) => {
     }
     const messages = buildCreateSkillMessages(parsed.data.goal);
     const content = await chatCompletion(c.env, messages, { temperature: 0.7 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, skill: parsedJson } });
+    const skill = parseModelJson(SkillDefinitionSchema, content, PARSE_FALLBACK_NULL);
+    return c.json({ ok: true, data: { content, skill } });
   } catch (err) {
     return mapOutboundError(c, err);
   }
@@ -148,13 +139,8 @@ app.post("/evaluate-skill", async (c) => {
     }
     const messages = buildEvaluateSkillMessages(parsed.data.skill);
     const content = await chatCompletion(c.env, messages, { temperature: 0.2 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, evaluation: parsedJson } });
+    const evaluation = parseModelJson(PromptEvaluationSchema, content, PARSE_FALLBACK_NULL);
+    return c.json({ ok: true, data: { content, evaluation } });
   } catch (err) {
     return mapOutboundError(c, err);
   }
@@ -169,13 +155,8 @@ app.post("/optimize-skill", async (c) => {
     }
     const messages = buildOptimizeSkillMessages(parsed.data.skill);
     const content = await chatCompletion(c.env, messages, { temperature: 0.6 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, skill: parsedJson } });
+    const skill = parseModelJson(SkillDefinitionSchema, content, PARSE_FALLBACK_NULL);
+    return c.json({ ok: true, data: { content, skill } });
   } catch (err) {
     return mapOutboundError(c, err);
   }
@@ -190,13 +171,8 @@ app.post("/compare-prompts", async (c) => {
     }
     const messages = buildComparePromptsMessages(parsed.data.promptA, parsed.data.promptB);
     const content = await chatCompletion(c.env, messages, { temperature: 0.3 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, comparison: parsedJson } });
+    const comparison = parseModelJson(PromptComparisonSchema, content, PARSE_FALLBACK_NULL);
+    return c.json({ ok: true, data: { content, comparison } });
   } catch (err) {
     return mapOutboundError(c, err);
   }
@@ -226,6 +202,12 @@ app.post("/search-skills", async (c) => {
     }
     const query = parsed.data.query;
     let results: Array<{ title: string; url: string; snippet: string }> = [];
+    // Web search is best-effort: if DuckDuckGo is unreachable we still return
+    // the AI-only answer, but the client must be able to distinguish "the
+    // search came back empty" from "we could not search at all". Instead of
+    // silently returning [], the response carries an explicit
+    // `webSearchUnavailable` flag.
+    let webSearchUnavailable = false;
     try {
       const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const res = await fetchWithTimeout(
@@ -238,14 +220,17 @@ app.post("/search-skills", async (c) => {
         // payload cannot blow past the Worker memory/CPU budget.
         const html = (await res.text()).slice(0, MAX_HTML_BYTES);
         results = parseDuckDuckGoHtml(html).slice(0, 8);
+      } else {
+        webSearchUnavailable = true;
       }
     } catch {
-      // fallback to AI-only
+      // Fallback to AI-only, flagged as degraded.
+      webSearchUnavailable = true;
     }
     const messages = buildSearchSkillsMessages(query, results);
     const content = await chatCompletion(c.env, messages, { temperature: 0.4 });
     const candidates = parseSkillCandidates(content);
-    return c.json({ ok: true, data: { content, results, candidates } });
+    return c.json({ ok: true, data: { content, results, candidates, webSearchUnavailable } });
   } catch (err) {
     return mapOutboundError(c, err);
   }

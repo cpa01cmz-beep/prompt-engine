@@ -102,24 +102,27 @@ function describedByFor(id: string, hint?: string | undefined): string | undefin
 
 /* ----------------------------- Status messaging ---------------------------- */
 
-type AlertTone = "error" | "success" | "info";
+type AlertTone = "error" | "success" | "info" | "warning";
 
 const ALERT_TONES: Record<AlertTone, string> = {
   error: "border-rose-200 bg-rose-50 text-rose-900",
   success: "border-emerald-200 bg-emerald-50 text-emerald-900",
   info: "border-sky-200 bg-sky-50 text-sky-900",
+  warning: "border-amber-200 bg-amber-50 text-amber-900",
 };
 
 const ALERT_ICONS: Record<AlertTone, string> = {
   error: "bg-rose-500/10 text-rose-600",
   success: "bg-emerald-500/10 text-emerald-600",
   info: "bg-sky-500/10 text-sky-600",
+  warning: "bg-amber-500/10 text-amber-600",
 };
 
 const ALERT_GLYPHS: Record<AlertTone, string> = {
   error: "!",
   success: "+",
   info: "i",
+  warning: "!",
 };
 
 export function Alert({

@@ -54,6 +54,25 @@ export type WebSearchResult = {
   snippet: string;
 };
 
+export type SearchSkillResult = WebSearchResult; // alias
+
+// Candidate skills extracted by AI from web search results (/api/ai/search-skills).
+export type SkillCandidate = {
+  name: string;
+  description?: string;
+  url?: string;
+};
+
+// Response of POST /api/ai/search-skills. `webSearchUnavailable` tells the
+// client the web-search leg failed (or was skipped) and `results` is empty
+// because of that — not because nothing matched.
+export type SkillSearchResponse = {
+  content: string;
+  results: WebSearchResult[];
+  candidates: SkillCandidate[];
+  webSearchUnavailable: boolean;
+};
+
 export type SearchResult = WebSearchResult;
 
 export type ApiResponse<T> = { ok: true; data: T } | { ok: false; error: string };
