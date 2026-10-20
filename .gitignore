@@ -24,3 +24,5 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
+.opencode/
+docs/
