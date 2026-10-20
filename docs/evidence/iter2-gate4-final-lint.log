@@ -1,0 +1,17 @@
+
+> prompt-engine@0.1.0 lint
+> eslint .
+
+
+/workspaces/prompt-engine/coverage/block-navigation.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/workspaces/prompt-engine/coverage/prettify.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+/workspaces/prompt-engine/coverage/sorter.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported)
+
+✖ 3 problems (0 errors, 3 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+

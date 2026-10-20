@@ -1,0 +1,33 @@
+
+ RUN  v5.0.5 /workspaces/prompt-engine
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P1 rejects a baseUrl pointing at a live local 127.0.0.1 http server
+RESULT P1 status=400 ok=false envelopeError="baseUrl must be a public https URL" localServerHits=0 outboundFetchCalls=0
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P2 rejects an untrusted public https origin when the caller sends none
+RESULT P2 status=403 ok=false envelopeError="baseUrl origin is not allowed" outboundFetchCalls=0
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P3 untrusted origin with a caller key fetches using only the caller value
+RESULT P3 status=200 outboundFetchCalls=1 authEqualsCallerValue=true authContainsEnvValue=false
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P4 allowlisted origin still receives the operator env value (positive control)
+RESULT P4 status=200 outboundFetchCalls=1 authEqualsEnvValue=true
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P5 /test rejects the live local server baseUrl too
+RESULT P5 status=400 ok=false envelopeError="baseUrl must be a public https URL" localServerHits=0 outboundFetchCalls=0
+
+stdout | tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P6 loopback + link-local metadata literals are rejected over https as well
+RESULT P6 loopbackHttps=400 metadataHttps=400 localhostHttps=400 outboundFetchCalls=0
+
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P1 rejects a baseUrl pointing at a live local 127.0.0.1 http server 21ms
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P2 rejects an untrusted public https origin when the caller sends none 6ms
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P3 untrusted origin with a caller key fetches using only the caller value 2ms
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P4 allowlisted origin still receives the operator env value (positive control) 3ms
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P5 /test rejects the live local server baseUrl too 3ms
+ ✓ tests/unit/__h1-probe.test.ts > H-1 adversarial probe > P6 loopback + link-local metadata literals are rejected over https as well 3ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  14:36:40
+   Duration  1.02s (environment 67%, transform 13%, import 8%, setup 7%, tests 5%, worker 1%)
+
