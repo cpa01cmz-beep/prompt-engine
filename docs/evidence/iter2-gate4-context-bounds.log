@@ -1,0 +1,7 @@
+# GeneratePromptSchema max-context probe — 2026-10-20T12:08:04Z
+# node --experimental-strip-types against src/worker/schemas.ts
+50x20k_context_accepted= true
+serialized_payload_chars= 1080216
+51_vars_accepted= false
+20001_char_role_accepted= false
+empty_string_var_accepted= false

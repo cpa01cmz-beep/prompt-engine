@@ -1,0 +1,7 @@
+# npm audit --omit=dev — 2026-10-20T12:03:59Z — HEAD 57b6ad8
+found 0 vulnerabilities
+EXIT=0
+
+=== npm audit (including devDependencies) ===
+found 0 vulnerabilities
+EXIT=0
