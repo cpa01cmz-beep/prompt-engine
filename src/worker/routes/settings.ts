@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/settings";
 import { SettingsValueSchema } from "../schemas";
-import { parseAiProvider } from "../services/aiProvider";
+import { trustedProviderOrigins } from "../services/aiProvider";
+import { isPublicHttpsUrl } from "../lib/url";
 import * as auth from "../db/auth";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -78,10 +79,35 @@ app.put("/:key", async (c) => {
           provider = undefined;
         }
       }
-      const validated = parseAiProvider(provider, c.env);
-      if (!validated) {
+      const p = (typeof provider === "object" && provider !== null ? provider : {}) as {
+        baseUrl?: unknown;
+        model?: unknown;
+      };
+      const shapeOk =
+        typeof p.baseUrl === "string" &&
+        typeof p.model === "string" &&
+        p.baseUrl.trim().length > 0 &&
+        p.model.trim().length > 0;
+      if (!shapeOk) {
         return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
       }
+      const baseUrl = String(p.baseUrl).trim();
+      const model = String(p.model).trim();
+      if (!isPublicHttpsUrl(baseUrl)) {
+        return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
+      }
+      const target = new URL(baseUrl.replace(/\/+$/, "")).origin;
+      if (!trustedProviderOrigins(c.env).has(target)) {
+        return c.json(
+          {
+            ok: false,
+            error:
+              "Provider origin is not allowed by the operator. Add it to AI_PROVIDER_ALLOWLIST (Cloudflare dashboard → Variables) or set OPENAI_BASE_URL.",
+          },
+          400,
+        );
+      }
+      const validated = { baseUrl, model };
       const toStore = JSON.stringify({ baseUrl: validated.baseUrl, model: validated.model });
       if (toStore.length > MAX_VALUE_BYTES) {
         return c.json({ ok: false, error: "Value too large" }, 400);
