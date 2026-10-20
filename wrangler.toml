@@ -9,12 +9,12 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "prompt-engine-db"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "e5602ca1-6b56-49fc-99ee-5ffc111a19bc"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "CACHE"
-id = "00000000000000000000000000000000"
+id = "26ee6d1bfc1241e69705b8df069ec16d"
 
 [vars]
 OPENAI_BASE_URL = "https://opencode.ai/zen/v1"
