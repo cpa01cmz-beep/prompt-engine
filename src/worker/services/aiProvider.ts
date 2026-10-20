@@ -44,11 +44,16 @@ export function trustedProviderOrigins(env?: { OPENAI_BASE_URL?: string; AI_PROV
  * target origin is not trusted by the operator (no OPENAI_BASE_URL /
  * AI_PROVIDER_ALLOWLIST match) — this closes the SSRF/secret-exfiltration path.
  */
-export function parseAiProvider(value: unknown, env?: { OPENAI_BASE_URL?: string; AI_PROVIDER_ALLOWLIST?: string }): AiProviderSettingValue | null {
+/**
+ * Validate the shape and URL constraints of a user-supplied `ai.provider`
+ * setting value. Returns null for anything malformed or unsafe (non-https,
+ * localhost, private/reserved IP literals, embedded credentials). Any public
+ * https origin is allowed; secret attachment is gated separately in ai.ts
+ * so an operator's env key is never sent to a non-trusted host.
+ */
+export function parseAiProvider(value: unknown, _env?: { OPENAI_BASE_URL?: string; AI_PROVIDER_ALLOWLIST?: string }): AiProviderSettingValue | null {
   const parsed = AiProviderShapeSchema.safeParse(value);
   if (!parsed.success) return null;
   if (!isPublicHttpsUrl(parsed.data.baseUrl)) return null;
-  const target = httpsOrigin(parsed.data.baseUrl);
-  if (!target || !trustedProviderOrigins(env).has(target)) return null;
   return { baseUrl: parsed.data.baseUrl, model: parsed.data.model };
 }

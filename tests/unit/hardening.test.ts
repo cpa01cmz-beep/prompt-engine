@@ -40,10 +40,15 @@ describe("parseAiProvider", () => {
     });
   });
 
-  it("rejects trusted-shape values pointed at untrusted origins", () => {
-    expect(parseAiProvider({ baseUrl: "https://api.openai.com/v1", model: "m" }, env)).toBeNull();
-    expect(parseAiProvider({ baseUrl: "https://evil.com/v1", model: "m" }, env)).toBeNull();
-    expect(parseAiProvider({ baseUrl: "https://opencode.ai/zen/v1", model: "m" })).toBeNull();
+  it("accepts public https origins", () => {
+    expect(parseAiProvider({ baseUrl: "https://api.openai.com/v1", model: "m" }, env)).toEqual({
+      baseUrl: "https://api.openai.com/v1",
+      model: "m",
+    });
+    expect(parseAiProvider({ baseUrl: "https://evil.com/v1", model: "m" }, env)).toEqual({
+      baseUrl: "https://evil.com/v1",
+      model: "m",
+    });
   });
 
   it("rejects malformed or unsafe provider shapes", () => {
