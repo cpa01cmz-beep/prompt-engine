@@ -3,6 +3,7 @@ import type { Env } from "../env";
 import type { WebSearchResult } from "@shared/types";
 import { isNonEmptyString } from "../lib/validate";
 import { fetchWithTimeout } from "../lib/fetchTimeout";
+import { mapOutboundError } from "../lib/outboundError";
 
 const SEARCH_TIMEOUT_MS = 10_000;
 
@@ -53,8 +54,7 @@ app.get("/web", async (c) => {
     const results = collectResults(json.RelatedTopics);
     return c.json({ ok: true, data: { query: q, results } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 

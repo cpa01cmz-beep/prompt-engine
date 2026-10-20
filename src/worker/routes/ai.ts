@@ -30,6 +30,7 @@ import {
   SkillCandidatesSchema,
 } from "../schemas";
 import { fetchWithTimeout } from "../lib/fetchTimeout";
+import { mapOutboundError } from "../lib/outboundError";
 
 const SEARCH_TIMEOUT_MS = 10_000;
 const MAX_HTML_BYTES = 512 * 1024;
@@ -62,8 +63,7 @@ app.post("/chat", async (c) => {
     const content = await chatCompletion(c.env, parsed.data.messages as AiMessage[]);
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -78,8 +78,7 @@ app.post("/generate-prompt", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.7 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -100,8 +99,7 @@ app.post("/evaluate-prompt", async (c) => {
     }
     return c.json({ ok: true, data: { content, evaluation: parsedJson } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -116,8 +114,7 @@ app.post("/optimize-prompt", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.6 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -138,8 +135,7 @@ app.post("/generate-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, skill: parsedJson } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -160,8 +156,7 @@ app.post("/evaluate-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, evaluation: parsedJson } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -182,8 +177,7 @@ app.post("/optimize-skill", async (c) => {
     }
     return c.json({ ok: true, data: { content, skill: parsedJson } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -204,8 +198,7 @@ app.post("/compare-prompts", async (c) => {
     }
     return c.json({ ok: true, data: { content, comparison: parsedJson } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -220,8 +213,7 @@ app.post("/research", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.5 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -255,8 +247,7 @@ app.post("/search-skills", async (c) => {
     const candidates = parseSkillCandidates(content);
     return c.json({ ok: true, data: { content, results, candidates } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
@@ -271,8 +262,7 @@ app.post("/run-skill", async (c) => {
     const content = await chatCompletion(c.env, messages, { temperature: 0.5 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
-    console.error("Request failed:", err);
-    return c.json({ ok: false, error: "Internal server error" }, 500);
+    return mapOutboundError(c, err);
   }
 });
 
