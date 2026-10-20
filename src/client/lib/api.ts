@@ -102,4 +102,10 @@ export const api = {
       body: JSON.stringify({ username, password, role }),
     }),
 
+  aiFetchModels: (baseUrl: string, apiKey?: string) =>
+    request<{ models: string[] }>("/api/ai/models", {
+      method: "POST",
+      body: JSON.stringify({ baseUrl, apiKey }),
+    }),
+
 };

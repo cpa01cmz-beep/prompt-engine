@@ -3,44 +3,26 @@ import { Button, Card, Input, Alert } from "./ui";
 import { api } from "../lib/api";
 
 type ProviderProfile = {
+  id: string;
   name: string;
   baseUrl: string;
   model: string;
-  note?: string;
+  apiKey: string;
 };
 
-const PRESETS: ProviderProfile[] = [
-  {
-    name: "opencode.ai free (default)",
-    baseUrl: "https://opencode.ai/zen/v1",
-    model: "deepseek-v4.1-flash-free",
-    note: "No API key required for the free tier (only inside OpenCode).",
-  },
-  {
-    name: "OpenAI",
-    baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4o-mini",
-    note: "Requires an OpenAI API key.",
-  },
-  {
-    name: "Groq",
-    baseUrl: "https://api.groq.com/openai/v1",
-    model: "llama-3.3-70b-versatile",
-    note: "Requires an OpenAI-compatible key.",
-  },
-  {
-    name: "Custom",
-    baseUrl: "",
-    model: "",
-    note: "Enter your own OpenAI-compatible endpoint.",
-  },
-];
+const newProvider = (): ProviderProfile => ({
+  id: crypto.randomUUID(),
+  name: "New provider",
+  baseUrl: "",
+  model: "",
+  apiKey: "",
+});
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [preset, setPreset] = useState(PRESETS[0].name);
-  const [baseUrl, setBaseUrl] = useState(PRESETS[0].baseUrl);
-  const [model, setModel] = useState(PRESETS[0].model);
-  const [apiKey, setApiKey] = useState("");
+  const [providers, setProviders] = useState<ProviderProfile[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +30,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  const active = providers.find((p) => p.id === activeId) ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -57,39 +41,102 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     api
       .getSettings()
       .then((data) => {
-        const raw = data["ai.provider"];
-        if (raw) {
+        let list: ProviderProfile[] = [];
+        if (data["ai.providers"]) {
           try {
-            const parsed = JSON.parse(raw) as { baseUrl?: string; model?: string };
-            if (parsed.baseUrl) setBaseUrl(parsed.baseUrl);
-            if (parsed.model) setModel(parsed.model);
+            const parsed = JSON.parse(data["ai.providers"]);
+            if (Array.isArray(parsed)) {
+              list = parsed.map((p) => {
+                const q = (p ?? {}) as { id?: string; name?: string; baseUrl?: string; model?: string; apiKey?: string };
+                return {
+                  id: q.id || crypto.randomUUID(),
+                  name: q.name || "Provider",
+                  baseUrl: q.baseUrl || "",
+                  model: q.model || "",
+                  apiKey: q.apiKey || data["OPENAI_API_KEY"] || "",
+                };
+              });
+            }
           } catch {
-            // ignore
+            list = [];
           }
         }
-        if (data["OPENAI_API_KEY"]) setApiKey(data["OPENAI_API_KEY"]);
+        if (list.length === 0) {
+          // migrate from legacy single provider
+          let baseUrl = "";
+          let model = "";
+          if (data["ai.provider"]) {
+            try {
+              const parsed = JSON.parse(data["ai.provider"]);
+              baseUrl = parsed.baseUrl || "";
+              model = parsed.model || "";
+            } catch {
+              // ignore
+            }
+          }
+          list = [
+            {
+              id: crypto.randomUUID(),
+              name: "Default",
+              baseUrl,
+              model,
+              apiKey: data["OPENAI_API_KEY"] || "",
+            },
+          ];
+        }
+        setProviders(list);
+        setActiveId(list[0]?.id ?? null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load settings."))
       .finally(() => setLoading(false));
   }, [open]);
 
-  const applyPreset = (name: string) => {
-    setPreset(name);
-    const p = PRESETS.find((x) => x.name === name);
-    if (p && p.name !== "Custom") {
-      setBaseUrl(p.baseUrl);
-      setModel(p.model);
+  const updateActive = (patch: Partial<ProviderProfile>) => {
+    if (!activeId) return;
+    setProviders((prev) => prev.map((p) => (p.id === activeId ? { ...p, ...patch } : p)));
+  };
+
+  const addProvider = () => {
+    const p = newProvider();
+    setProviders((prev) => [...prev, p]);
+    setActiveId(p.id);
+    setModels([]);
+  };
+
+  const deleteProvider = (id: string) => {
+    setProviders((prev) => prev.filter((p) => p.id !== id));
+    if (activeId === id) {
+      setActiveId(providers.find((p) => p.id !== id)?.id ?? null);
+    }
+  };
+
+  const fetchModels = async () => {
+    if (!active) return;
+    setLoadingModels(true);
+    setError(null);
+    try {
+      const res = await api.aiFetchModels(active.baseUrl, active.apiKey);
+      setModels(res.models);
+      if (res.models.length > 0 && !res.models.includes(active.model)) {
+        updateActive({ model: res.models[0] });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not fetch models.");
+    } finally {
+      setLoadingModels(false);
     }
   };
 
   const save = async () => {
+    if (!active) return;
     setSaving(true);
     setError(null);
     setSuccess(null);
     try {
-      await api.setSetting("ai.provider", { baseUrl, model });
-      if (apiKey.trim()) {
-        await api.setSetting("OPENAI_API_KEY", apiKey.trim());
+      await api.setSetting("ai.providers", providers);
+      await api.setSetting("ai.provider", { baseUrl: active.baseUrl, model: active.model });
+      if (active.apiKey.trim()) {
+        await api.setSetting("OPENAI_API_KEY", active.apiKey.trim());
       }
       setSuccess("Saved. Changes apply to future AI requests.");
     } catch (err) {
@@ -119,7 +166,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-auto">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">AI Provider Settings</h2>
           <Button variant="ghost" onClick={onClose} aria-label="Close">
@@ -131,40 +178,91 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <p className="text-sm text-slate-600">Loading...</p>
         ) : (
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Preset</label>
+            <div className="flex items-center gap-2">
               <select
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                value={preset}
-                onChange={(e) => applyPreset(e.target.value)}
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                value={activeId ?? ""}
+                onChange={(e) => {
+                  setActiveId(e.target.value);
+                  setModels([]);
+                }}
               >
-                {PRESETS.map((p) => (
-                  <option key={p.name} value={p.name}>
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
               </select>
-              {PRESETS.find((p) => p.name === preset)?.note && (
-                <p className="mt-1 text-xs text-slate-500">
-                  {PRESETS.find((p) => p.name === preset)?.note}
-                </p>
+              <Button variant="secondary" onClick={addProvider}>
+                Add
+              </Button>
+              {providers.length > 1 && active && (
+                <Button variant="danger" onClick={() => deleteProvider(active.id)}>
+                  Delete
+                </Button>
               )}
             </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Base URL</label>
-              <Input label="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.example.com/v1" />
-            </div>
+            {active && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Name</label>
+                  <Input
+                    label="Name"
+                    value={active.name}
+                    onChange={(e) => updateActive({ name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Base URL</label>
+                  <Input
+                    label="Base URL"
+                    value={active.baseUrl}
+                    onChange={(e) => updateActive({ baseUrl: e.target.value })}
+                    placeholder="https://api.example.com/v1"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Model</label>
+                  {models.length > 0 ? (
+                    <select
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      value={active.model}
+                      onChange={(e) => updateActive({ model: e.target.value })}
+                    >
+                      {models.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      label="Model"
+                      value={active.model}
+                      onChange={(e) => updateActive({ model: e.target.value })}
+                      placeholder="model-name"
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">API Key</label>
+                  <Input
+                    label="API Key"
+                    type="password"
+                    value={active.apiKey}
+                    onChange={(e) => updateActive({ apiKey: e.target.value })}
+                    placeholder="sk-..."
+                  />
+                </div>
 
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Model</label>
-              <Input label="Model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="model-name" />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">API Key (stored securely server-side)</label>
-              <Input label="API Key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." />
-            </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={fetchModels} disabled={loadingModels || !active.baseUrl}>
+                    {loadingModels ? "Fetching..." : "Fetch models"}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <Alert tone={error ? "error" : success ? "success" : "info"}>
               {error || success || "Changes apply to future AI requests only."}
@@ -174,7 +272,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <Button variant="tertiary" onClick={onClose}>
                 Cancel
               </Button>
-              <Button onClick={save} disabled={saving}>
+              <Button onClick={save} disabled={saving || !active}>
                 {saving ? "Saving..." : "Save"}
               </Button>
             </div>
@@ -182,14 +280,14 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
             <hr className="my-2" />
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-slate-900">Change password</h3>
-<Input
+              <Input
                 label="Current password"
                 type="password"
                 placeholder="Current password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
               />
-<Input
+              <Input
                 label="New password"
                 type="password"
                 placeholder="New password (min 6 chars)"

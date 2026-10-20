@@ -33,6 +33,7 @@ import {
 } from "../schemas";
 import { fetchWithTimeout } from "../lib/fetchTimeout";
 import { mapOutboundError } from "../lib/outboundError";
+import * as auth from "../db/auth";
 import { parseModelJson } from "../lib/modelJson";
 
 const SEARCH_TIMEOUT_MS = 10_000;
@@ -292,5 +293,49 @@ function decodeDuckUrl(raw: string): string {
     return raw;
   }
 }
+
+
+
+function bearerToken(c: { req: { header: (name: string) => string | undefined } }): string | null {
+  const h = c.req.header("Authorization");
+  if (!h) return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+app.post("/models", async (c) => {
+  try {
+    const token = bearerToken(c);
+    if (!token) return c.json({ ok: false, error: "Unauthorized" }, 401);
+    const user = await auth.getSessionUser(c.env.DB, token);
+    if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
+
+    const body = (await c.req.json().catch(() => ({}))) as { baseUrl?: string; apiKey?: string };
+    const baseUrl = (body.baseUrl ?? "").trim();
+    if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
+
+    // reuse trusted env key if no key provided
+    const apiKey = body.apiKey?.trim() || c.env.OPENAI_API_KEY || "";
+    const url = `${baseUrl.replace(/\/+$/, "")}/models`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const res = await fetch(url, { method: "GET", headers });
+    if (!res.ok) {
+      return c.json({ ok: false, error: `Upstream error ${res.status}` }, 502);
+    }
+    const json = (await res.json().catch(() => ({}))) as { data?: Array<{ id?: string }>; models?: string[] };
+    let models: string[] = [];
+    if (Array.isArray(json.data)) {
+      models = json.data.map((m) => m.id).filter((x): x is string => typeof x === "string");
+    } else if (Array.isArray(json.models)) {
+      models = json.models.filter((x): x is string => typeof x === "string");
+    }
+    models = Array.from(new Set(models)).sort();
+    return c.json({ ok: true, data: { models } });
+  } catch (err) {
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: "Internal server error" }, 500);
+  }
+});
 
 export default app;
