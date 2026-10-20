@@ -10,6 +10,5 @@ const OUTBOUND_ERROR_STATUS = 502;
  */
 export function mapOutboundError(c: Context, cause: unknown): Response {
   console.error("Outbound request failed:", cause);
-  // TEMP DEBUG
-  return c.json({ ok: false, error: String(cause) }, OUTBOUND_ERROR_STATUS);
+  return c.json({ ok: false, error: "Upstream AI error" }, OUTBOUND_ERROR_STATUS);
 }

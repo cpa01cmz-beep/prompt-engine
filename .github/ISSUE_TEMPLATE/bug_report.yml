@@ -1,0 +1,38 @@
+name: Bug report
+description: Something is broken
+labels: ["bug"]
+body:
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include exact error output.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. npm run dev
+        2. POST /api/…
+  - type: dropdown
+    id: gate
+    attributes:
+      label: Which quality-gate surface?
+      options:
+        - Unit test (vitest)
+        - Integration test (vitest)
+        - E2E (Playwright)
+        - Client UI
+        - Worker route / API
+        - Lint or typecheck
+    validations:
+      required: true
