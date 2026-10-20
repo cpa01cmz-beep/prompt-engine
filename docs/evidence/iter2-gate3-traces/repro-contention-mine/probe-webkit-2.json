@@ -1,0 +1,23 @@
+{
+ "engine": "webkit",
+ "timingsMs": {
+  "goto": 1319,
+  "fill": 93,
+  "generate": 2211,
+  "expectResult": 33,
+  "save": 1582
+ },
+ "uniqRectCount": 1,
+ "uniqRects": [
+  "{\"x\":374,\"y\":679.75,\"w\":63.922,\"h\":36}"
+ ],
+ "rafCount": 40,
+ "rafSpanMs": 3474,
+ "rafDeltaMax": 1546,
+ "rafDeltaMin": 5,
+ "sameNode": true,
+ "disabled": false,
+ "visibility": "visible",
+ "fonts": "loaded",
+ "runningAnimations": []
+}

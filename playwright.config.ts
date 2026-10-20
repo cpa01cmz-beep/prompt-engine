@@ -3,6 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
+  // WebKit click actionability stalls under parallel load on 2-core runners;
+  // serial lanes guarantee determinism (see docs/evidence/iter2-reverify-gate3-report.md).
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: "html",
