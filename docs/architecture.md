@@ -17,6 +17,9 @@ Prompt Engine + Skills Engine is a Cloudflare-native web application. A single C
 
 ```mermaid
 flowchart LR
+  %% baseUrl trust boundary (/api/ai/models, /api/ai/test): the caller-supplied origin is
+  %% validated by resolveBaseUrl before any outbound fetch, and the env provider key is
+  %% attached only to trusted origins or when the caller brings their own key.
   subgraph Browser["React client (src/client)"]
     App["App.tsx<br/>engine toggle + grouped nav"]
     PC["PromptCreator.tsx<br/>Goal → Add context → Generate → Save"]
@@ -90,7 +93,7 @@ Navigation is grouped, not a flat list. `promptModuleGroups` and `skillModuleGro
 
 1. **Rate limit** (`middleware/rateLimit.ts`): every `/api/*` call is counted in KV. Mutating methods get 60 requests/minute per `cf-connecting-ip`, reads 240/minute, keyed per UTC minute with a 120 s TTL. Over budget → `429 { ok: false, error: "Rate limit exceeded" }`. Missing `CACHE` fails closed (503) for mutations and open for reads.
 2. **Parse** — `c.req.json()`, then `GeneratePromptSchema.safeParse(body)`. Failure → `400 { ok: false, error: <zod message> }`.
-3. **Validate** — `GeneratePromptSchema` (`src/worker/schemas.ts`): `goal` (1…20 000 chars), optional `role` (≤20 000), optional `variables` (array of non-empty strings, ≤50), optional `constraints`, optional `examples`.
+3. **Validate** — `GeneratePromptSchema` (`src/worker/schemas.ts`): `goal` (1…20 000 chars), optional `role` (≤20 000), optional `variables` (array of non-empty strings, ≤50), optional `constraints`, optional `examples`. The same schema applies an aggregate cap: `composedContextChars` (`src/worker/schemas.ts:30-45`) sums `goal` + `role` + `constraints` + `examples` + `variables` (joined with `", "`) and a `.superRefine` (`:125-134`) rejects anything over `MAX_CONTEXT_CHARS` 64 000 (`:12`) with the message `Total context is <n> characters; the limit is 64000`. Per-field caps alone would still admit roughly 1 MB of legal input, so the composed context is bounded before it is concatenated into one upstream prompt.
 4. **Compose** — `buildCreatePromptMessages(goal, { role, variables, constraints, examples })` in `src/worker/services/ai.ts`.
 5. **Resolve provider** — `chatCompletion` calls `resolveAiConfig(env)`: reads the settings table, prefers a validated `ai.provider` JSON value `{ baseUrl, model }`, otherwise falls back to `OPENAI_BASE_URL` / `OPENAI_MODEL` (defaults `https://opencode.ai/zen/v1`, `deepseek-v4.1-flash-free`).
 6. **Call provider** — `POST ${baseUrl}/chat/completions` with `{ model, messages, temperature: 0.7, max_tokens: 1200, stream: false }` and a 30 s timeout (`lib/fetchTimeout.ts`). `Authorization` is attached only when the target origin is the trusted env origin (or the key came from settings), so a settings-overridden base URL never receives the operator key.
@@ -99,6 +102,15 @@ Navigation is grouped, not a flat list. `promptModuleGroups` and `skillModuleGro
 
 Note: the route itself performs no Bearer-token check (no auth middleware is mounted on `/api/ai`). The client still sends `Authorization: Bearer <token>` on every request; auth-gated endpoints are `/api/auth/me`, `/api/auth/change-password`, `/api/auth/users`, all `/api/settings/*`, and `/api/ai/models` + `/api/ai/test`.
 
+
+## `baseUrl` trust boundary
+
+`POST /api/ai/models` and `POST /api/ai/test` are the only routes that fetch a caller-supplied origin. The path is:
+
+1. **Validate shape** — `isPublicHttpsUrl` (`src/worker/lib/url.ts:38-55`) requires `https://`, no embedded credentials, at most 2048 chars, and a host that is neither `localhost` nor a private/reserved IP literal. Failure → `400 { ok: false, error: "baseUrl must be a public https URL" }` (`src/worker/routes/ai.ts:316-317`).
+2. **Check origin trust** — an origin is trusted when it matches `OPENAI_BASE_URL` or an entry in `AI_PROVIDER_ALLOWLIST` (`src/worker/services/aiProvider.ts:15-24,27-38`; `isTrustedAiOrigin`). An untrusted origin without a caller-supplied `apiKey` → `403 { ok: false, error: "baseUrl origin is not allowed" }` (`src/worker/routes/ai.ts:321-323`).
+3. **Resolve credentials** — `apiKey: callerKey || env.OPENAI_API_KEY || ""` (`src/worker/routes/ai.ts:324`). Step 2 already rejected every untrusted origin with no caller key, so the env provider key is only ever attached to a trusted origin; a caller using a custom origin must bring their own key.
+4. **Fetch** — only after steps 1–3 (`src/worker/routes/ai.ts:349` for `/models`, `:409` for `/test`). Loopback and metadata probes never reach the network (`docs/evidence/iter2-gates-4-final-report.md`: `localServerHits=0`, `outboundFetchCalls=0`).
 ## Message composition (`src/worker/services/ai.ts`)
 
 `buildCreatePromptMessages(goal, ctx)` returns exactly two messages:
@@ -151,13 +163,14 @@ See [api.md](api.md) for the endpoint reference.
 - Config from env: `OPENAI_BASE_URL` (default `https://opencode.ai/zen/v1`), `OPENAI_MODEL` (default `deepseek-v4.1-flash-free`), optional `OPENAI_API_KEY`.
 - Optional `AI_PROVIDER_ALLOWLIST` (comma-separated `https://` origins) constrains settings-based provider overrides.
 - User-writable `ai.provider` (`{ baseUrl, model }`) is validated as a public HTTPS URL (`services/aiProvider.ts`); malformed values fall back to the env config.
+- Caller-supplied `baseUrl` on `/api/ai/models` and `/api/ai/test` is validated by `resolveBaseUrl` before any fetch (`src/worker/routes/ai.ts:314-325`): non-public or non-HTTPS → `400`, untrusted origin without a caller key → `403`; the env provider key is only attached to trusted origins, so it is never sent to a caller-chosen host.
 - Worker-side calls only; no secrets in client code.
 
 ## Security posture
 
 - CSP via `secure-headers`: `default-src 'self'`, `script-src 'self'`, `style-src 'self' 'unsafe-inline'`, `img-src 'self' data:`, `connect-src 'self'`.
 - CORS allows the dev origins (`localhost`/`127.0.0.1` on 5173 and 8787) and same-origin requests; allowed headers are `Content-Type`, `Authorization`, `X-Correlation-ID`.
-- All request bodies are bounded by Zod (`MAX_TEXT` 20 000, `MAX_TITLE` 300, arrays ≤50, JSON blobs ≤32 KB).
+- All request bodies are bounded by Zod (`MAX_TEXT` 20 000, `MAX_TITLE` 300, arrays ≤50, JSON blobs ≤32 KB). The composed AI context is additionally capped at `MAX_CONTEXT_CHARS` 64 000 so the per-field caps cannot be summed into a ~1 MB prompt (`src/worker/schemas.ts:12,125-134`).
 - Passwords are PBKDF2-SHA256 (100 000 iterations, 16-byte salt); sessions are opaque tokens in D1 with `expires_at`.
 
 ## Folder structure

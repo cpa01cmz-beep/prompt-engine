@@ -29,13 +29,24 @@ Generates a prompt from a goal with optional context.
 }
 ```
 
+**Field and aggregate bounds** (`src/worker/schemas.ts`)
+
+| Bound | Limit | Source |
+| --- | --- | --- |
+| `goal` | required, 1–20,000 chars | `src/worker/schemas.ts:5,119` |
+| `role`, `constraints`, `examples` | optional, ≤ 20,000 chars each | `src/worker/schemas.ts:120,122-123` |
+| `variables` | optional, ≤ 50 items, each ≤ 20,000 chars | `src/worker/schemas.ts:121` |
+| **Total context** — `goal` + `role` + `constraints` + `examples` + `variables` joined with `", "` | **≤ 64,000 chars** | `src/worker/schemas.ts:12,30-45,125-134` |
+
+Per-field caps alone would still admit roughly 1 MB of valid input, so the composed context is bounded at the validation boundary too. A body over the aggregate cap fails Zod validation and returns `400 { ok: false, error: <zod message> }` (`src/worker/routes/ai.ts:78`); the message contains `Total context is <n> characters; the limit is 64000`.
+
 **Success** — `200 { "ok": true, "data": { "content": "<generated prompt>" } }`
 
 **Errors**
 
 | Status | Body | Cause |
 | --- | --- | --- |
-| 400 | `{ ok: false, error }` | Zod validation failure (missing/invalid `goal`, or bounded-field violation) |
+| 400 | `{ ok: false, error }` | Zod validation failure (missing/invalid `goal`, bounded-field violation, or total context over the 64,000-char cap) |
 | 429 | `{ ok: false, error: "Rate limit exceeded" }` | Global rate limit exceeded |
 | 502 | `{ ok: false, error: "Upstream AI error" }` | Provider/network failure or timeout (details logged server-side) |
 | 500 | `{ ok: false, error: "Internal server error" }` | Unhandled worker error |
@@ -65,8 +76,21 @@ All are `POST`, mount under `/api/ai`, accept JSON, return the standard envelope
 | POST | `/api/ai/run-skill` | none | `{ skill, input? }` | `{ content }` |
 | POST | `/api/ai/evaluate-skill` | none | `{ skill }` | `{ content, evaluation }` (`evaluation` may be `null`) |
 | POST | `/api/ai/optimize-skill` | none | `{ skill }` | `{ content, skill }` (`skill` may be `null`) |
-| POST | `/api/ai/models` | Bearer | `{ baseUrl, apiKey? }` | `{ models: string[] }`; `400` if `baseUrl` missing; `502 { ok:false, error: "Upstream error <status>" }` |
-| POST | `/api/ai/test` | Bearer | `{ baseUrl, model, apiKey?, mode?, goal? }` | `{ status }` on success. On upstream failure returns `{ ok: false, error: "HTTP <status>: <text>" }` with HTTP 200 (no explicit status code). `400` if `baseUrl` or `model` missing. |
+| POST | `/api/ai/models` | Bearer | `{ baseUrl, apiKey? }` | `{ models: string[] }`; `400` if `baseUrl` missing; `502 { ok:false, error: "Upstream error <status>" }`; `400 { ok: false, error: "baseUrl must be a public https URL" }` if `baseUrl` is not a public HTTPS URL; `403 { ok: false, error: "baseUrl origin is not allowed" }` if the origin is untrusted and no caller `apiKey` is supplied |
+| POST | `/api/ai/test` | Bearer | `{ baseUrl, model, apiKey?, mode?, goal? }` | `{ status }` on success. On upstream failure returns `{ ok: false, error: "HTTP <status>: <text>" }` with HTTP 200 (no explicit status code). `400` if `baseUrl` or `model` missing. Also `400 { ok: false, error: "baseUrl must be a public https URL" }` if `baseUrl` is not a public HTTPS URL; `403 { ok: false, error: "baseUrl origin is not allowed" }` if the origin is untrusted and no caller `apiKey` is supplied. |
+
+### `baseUrl` trust boundary
+
+Both `POST /api/ai/models` and `POST /api/ai/test` accept a caller-supplied `baseUrl`; `resolveBaseUrl` (`src/worker/routes/ai.ts:314-325`) gates it **before** any outbound fetch:
+
+| Check | Condition | Result |
+| --- | --- | --- |
+| Shape | Not a public `https://` URL — non-HTTPS, `localhost`, private/reserved IP literals, embedded credentials, or longer than 2048 chars (`isPublicHttpsUrl`, `src/worker/lib/url.ts:1,38-55`) | `400 { ok: false, error: "baseUrl must be a public https URL" }` (`src/worker/routes/ai.ts:316-317`) |
+| Origin trust | Origin is neither operator-trusted (`OPENAI_BASE_URL` / `AI_PROVIDER_ALLOWLIST`, `src/worker/services/aiProvider.ts:15-24,27-38`) **nor** accompanied by a caller-supplied `apiKey` | `403 { ok: false, error: "baseUrl origin is not allowed" }` (`src/worker/routes/ai.ts:321-323`) |
+
+Order of checks: bearer auth → `401 { ok: false, error: "Unauthorized" }` (`src/worker/routes/ai.ts:337,339` and `:380,382`), required fields → `400` (`:342`, `:393-394`), `resolveBaseUrl` → `400`/`403` (`:344`, `:397`), then the outbound fetch (`:349`, `:409`). For loopback and metadata targets the request is rejected with `localServerHits=0` and `outboundFetchCalls=0` (`docs/evidence/iter2-gates-4-final-report.md`).
+
+The operator's `OPENAI_API_KEY` is attached only to trusted origins: the resolver returns `apiKey: callerKey || env.OPENAI_API_KEY || ""` (`src/worker/routes/ai.ts:324`), which is reached only when the origin is trusted or the caller supplied their own key — the env provider key is never sent to an untrusted origin. A caller can still point the Worker at any public HTTPS origin, but only with **their own** key.
 
 ## Prompts — `/api/prompts`
 

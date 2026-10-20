@@ -36,11 +36,11 @@ OPENAI_MODEL = "deepseek-v4.1-flash-free"
 
 ```bash
 OPENAI_BASE_URL=https://opencode.ai/zen/v1
-OPENAI_MODEL=deepseek-v4-flash-free
+OPENAI_MODEL=deepseek-v4.1-flash-free
 OPENAI_API_KEY=
 ```
 
-> **Discrepancy (verified):** `.env.example` lists `deepseek-v4-flash-free`, while `wrangler.toml` and the code default in `src/worker/services/ai.ts` use `deepseek-v4.1-flash-free`. Treat `wrangler.toml` / the code as authoritative.
+> **Note (updated)**: `.env.example` now lists `deepseek-v4.1-flash-free`, matching `wrangler.toml` and the code default in `src/worker/services/ai.ts:8`. It previously listed `deepseek-v4-flash-free`, which is not a model the provider exposes. Treat `wrangler.toml` / the code as authoritative.
 
 Worker-side variables and secrets (`src/worker/env.ts`):
 
