@@ -45,7 +45,10 @@ export const SettingsInputSchema = z.object({
 });
 
 export const SettingsValueSchema = z.object({
-  value: z.unknown(),
+  // `undefined` is not a representable JSON value, so a missing/undefined
+  // value is not a valid setting payload (it would otherwise make
+  // JSON.stringify return `undefined` and crash the size check).
+  value: z.unknown().refine((v) => v !== undefined, { message: "value is required" }),
 });
 
 // AI request bodies

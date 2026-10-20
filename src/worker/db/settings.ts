@@ -31,5 +31,9 @@ export async function getSettingTyped<T>(db: D1Database, key: string): Promise<T
 }
 
 export async function setSettingTyped(db: D1Database, key: string, value: unknown): Promise<void> {
-  await setSetting(db, key, JSON.stringify(value));
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) {
+    throw new Error("Value is not JSON-serializable");
+  }
+  await setSetting(db, key, serialized);
 }

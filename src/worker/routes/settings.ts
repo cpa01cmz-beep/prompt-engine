@@ -48,12 +48,23 @@ app.put("/:key", async (c) => {
     if (isRejectedKey(key)) {
       return c.json({ ok: false, error: "Key not allowed" }, 400);
     }
-    const body = await c.req.json();
-    const parsed = SettingsValueSchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json({ ok: false, error: parsed.error.message }, 400);
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ ok: false, error: "Invalid JSON body" }, 400);
     }
-    if (JSON.stringify(parsed.data.value).length > MAX_VALUE_BYTES) {
+    const parsed = SettingsValueSchema.safeParse(body);
+    if (!parsed.success || !parsed.data) {
+      return c.json({ ok: false, error: parsed.success ? "Invalid body" : parsed.error.message }, 400);
+    }
+    const serialized = JSON.stringify(parsed.data.value);
+    // JSON.stringify returns `undefined` for `undefined` inputs; guard against
+    // that (and any other non-serializable value) instead of dereferencing it.
+    if (serialized === undefined) {
+      return c.json({ ok: false, error: "Value is not JSON-serializable" }, 400);
+    }
+    if (new TextEncoder().encode(serialized).length > MAX_VALUE_BYTES) {
       return c.json({ ok: false, error: "Value too large" }, 400);
     }
     await repo.setSettingTyped(c.env.DB, key, parsed.data.value);
