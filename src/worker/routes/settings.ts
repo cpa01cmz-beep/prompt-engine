@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/settings";
 import { SettingsValueSchema } from "../schemas";
+import { parseAiProvider } from "../services/aiProvider";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -37,6 +38,11 @@ const ALLOWED_KEY_RE = /^[A-Za-z0-9._-]{1,64}$/;
 const FORBIDDEN_KEY_RE = /(api[_-]?key|secret|token|password|credential)/i;
 const MAX_VALUE_BYTES = 16384;
 
+// Settings are writable by anonymous users, so the key space must stay minimal:
+// only keys the app actually consumes get written. Everything else (including
+// legacy OPENAI_* keys) is rejected with 400 instead of being stored.
+const WRITABLE_KEYS = new Set(["ai.provider"]);
+
 function isRejectedKey(key: string): boolean {
   return !ALLOWED_KEY_RE.test(key) || FORBIDDEN_KEY_RE.test(key);
 }
@@ -45,7 +51,7 @@ app.put("/:key", async (c) => {
   try {
     const key = c.req.param("key");
     if (!key) return c.json({ ok: false, error: "Missing required param: key" }, 400);
-    if (isRejectedKey(key)) {
+    if (isRejectedKey(key) || !WRITABLE_KEYS.has(key)) {
       return c.json({ ok: false, error: "Key not allowed" }, 400);
     }
     let body: unknown;
@@ -57,6 +63,12 @@ app.put("/:key", async (c) => {
     const parsed = SettingsValueSchema.safeParse(body);
     if (!parsed.success || !parsed.data) {
       return c.json({ ok: false, error: parsed.success ? "Invalid body" : parsed.error.message }, 400);
+    }
+    // The value space mirrors what the app reads back. `ai.provider` is the
+    // only writable key and it must be a vetted provider shape (https origins
+    // only) — anything else is rejected before it reaches D1.
+    if (key === "ai.provider" && !parseAiProvider(parsed.data.value)) {
+      return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
     }
     const serialized = JSON.stringify(parsed.data.value);
     // JSON.stringify returns `undefined` for `undefined` inputs; guard against

@@ -32,10 +32,15 @@ function toEvaluation(row: Row): Evaluation {
   };
 }
 
-export async function listEvaluations(db: D1Database, targetType?: string, targetId?: string): Promise<Evaluation[]> {
-  let stmt = db.prepare("SELECT * FROM evaluations ORDER BY created_at DESC");
+export async function listEvaluations(
+  db: D1Database,
+  targetType?: string,
+  targetId?: string,
+  limit?: number,
+): Promise<Evaluation[]> {
+  let stmt = db.prepare("SELECT * FROM evaluations ORDER BY created_at DESC LIMIT ?1").bind(limit ?? 100);
   if (targetType && targetId) {
-    stmt = db.prepare("SELECT * FROM evaluations WHERE target_type=?1 AND target_id=?2 ORDER BY created_at DESC").bind(targetType, targetId);
+    stmt = db.prepare("SELECT * FROM evaluations WHERE target_type=?1 AND target_id=?2 ORDER BY created_at DESC LIMIT ?3").bind(targetType, targetId, limit ?? 100);
   }
   const res = await stmt.all<Row>();
   return (res.results ?? []).map(toEvaluation);

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import {
   chatCompletion,
+  parseJsonFromText,
   buildCreatePromptMessages,
   buildEvaluatePromptMessages,
   buildOptimizePromptMessages,
@@ -26,7 +27,28 @@ import {
   ResearchSchema,
   ComparePromptsSchema,
   RunSkillSchema,
+  SkillCandidatesSchema,
 } from "../schemas";
+import { fetchWithTimeout } from "../lib/fetchTimeout";
+
+const SEARCH_TIMEOUT_MS = 10_000;
+const MAX_HTML_BYTES = 512 * 1024;
+
+/**
+ * Parse the model's candidate-skills output via parseJsonFromText and validate
+ * the shape with zod. Anything malformed becomes an empty list rather than raw
+ * model text being surfaced as structured data.
+ */
+function parseSkillCandidates(content: string): Array<{ name: string; description?: string; url?: string }> {
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromText(content);
+  } catch {
+    parsed = null;
+  }
+  const result = SkillCandidatesSchema.safeParse(parsed);
+  return result.success ? result.data : [];
+}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -214,9 +236,15 @@ app.post("/search-skills", async (c) => {
     let results: Array<{ title: string; url: string; snippet: string }> = [];
     try {
       const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+      const res = await fetchWithTimeout(
+        url,
+        { headers: { "User-Agent": "Mozilla/5.0" } },
+        SEARCH_TIMEOUT_MS,
+      );
       if (res.ok) {
-        const html = await res.text();
+        // Bound the response size before regex parsing so a huge or hostile
+        // payload cannot blow past the Worker memory/CPU budget.
+        const html = (await res.text()).slice(0, MAX_HTML_BYTES);
         results = parseDuckDuckGoHtml(html).slice(0, 8);
       }
     } catch {
@@ -224,13 +252,8 @@ app.post("/search-skills", async (c) => {
     }
     const messages = buildSearchSkillsMessages(query, results);
     const content = await chatCompletion(c.env, messages, { temperature: 0.4 });
-    let parsedJson: unknown = null;
-    try {
-      parsedJson = JSON.parse(content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim());
-    } catch {
-      parsedJson = content;
-    }
-    return c.json({ ok: true, data: { content, results, candidates: parsedJson } });
+    const candidates = parseSkillCandidates(content);
+    return c.json({ ok: true, data: { content, results, candidates } });
   } catch (err) {
     console.error("Request failed:", err);
     return c.json({ ok: false, error: "Internal server error" }, 500);

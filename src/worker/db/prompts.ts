@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { Prompt } from "@shared/types";
-import { newId, nowIso } from "./utils";
+import { escapeLike, newId, nowIso, parseStringArray } from "./utils";
 
 type PromptRow = {
   id: string;
@@ -17,13 +17,7 @@ type PromptRow = {
 };
 
 function parseArray(value: string | null): string[] | undefined {
-  if (!value) return undefined;
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? (parsed as string[]) : undefined;
-  } catch {
-    return undefined;
-  }
+  return parseStringArray(value);
 }
 
 function rowToPrompt(row: PromptRow): Prompt {
@@ -42,11 +36,15 @@ function rowToPrompt(row: PromptRow): Prompt {
   };
 }
 
-export async function listPrompts(db: D1Database, search?: string): Promise<Prompt[]> {
-  const stmt = search
-    ? db.prepare("SELECT * FROM prompts WHERE title LIKE ?1 OR content LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
-    : db.prepare("SELECT * FROM prompts ORDER BY updated_at DESC");
-  const res = await stmt.all<PromptRow>();
+export async function listPrompts(db: D1Database, search?: string, limit?: number): Promise<Prompt[]> {
+  const pattern = search ? `%${escapeLike(search)}%` : null;
+  const bound = pattern ? db
+    .prepare("SELECT * FROM prompts WHERE title LIKE ?1 ESCAPE '\\' OR content LIKE ?1 ESCAPE '\\' ORDER BY updated_at DESC LIMIT ?2")
+    .bind(pattern, limit ?? 100)
+    : db
+      .prepare("SELECT * FROM prompts ORDER BY updated_at DESC LIMIT ?1")
+      .bind(limit ?? 100);
+  const res = await bound.all<PromptRow>();
   return (res.results ?? []).map(rowToPrompt);
 }
 

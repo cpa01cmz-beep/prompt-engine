@@ -1,8 +1,12 @@
 import type { Env } from "../env";
 import type { AiMessage } from "@shared/types";
 import { listSettings } from "../db/settings";
+import { parseAiProvider } from "./aiProvider";
+import { fetchWithTimeout } from "../lib/fetchTimeout";
 
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/v1";
+const DEFAULT_MODEL = "deepseek-v4.1-flash-free";
+const CHAT_TIMEOUT_MS = 30_000;
 
 export type AiConfig = {
   baseUrl: string;
@@ -11,17 +15,33 @@ export type AiConfig = {
 };
 
 export function getAiConfig(env: Env, settings?: Record<string, string>): AiConfig {
-  const s = settings ?? {};
-  // Base URL and model may be overridden from app settings so operators can
-  // point the app at their own inference endpoint. The API key, however, is a
-  // secret: it is never sourced from settings (settings are user-writable via
-  // /api/settings) and only comes from trusted environment configuration.
-  const baseUrl =
-    s.OPENAI_BASE_URL || s.openai_base_url || env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
-  const model =
-    s.OPENAI_MODEL || s.openai_model || env.OPENAI_MODEL || "deepseek-v4.1-flash-free";
-  const apiKey = env.OPENAI_API_KEY;
-  return { baseUrl, model, apiKey };
+  const e = (env ?? {}) as Env;
+  const apiKey = e.OPENAI_API_KEY;
+  // Operators can point the app at their own inference endpoint via the
+  // user-writable `ai.provider` setting. Anything else in settings (including
+  // legacy OPENAI_BASE_URL/OPENAI_MODEL keys) is ignored: that key space is
+  // public and must never configure the provider or carry secrets — the API
+  // key only ever comes from trusted environment configuration.
+  const raw = settings?.["ai.provider"];
+  let provider: unknown;
+  if (typeof raw === "string") {
+    try {
+      provider = JSON.parse(raw);
+    } catch {
+      provider = undefined;
+    }
+  }
+  const parsed = parseAiProvider(provider);
+  if (parsed) {
+    return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey };
+  }
+  // Fall back to trusted environment configuration when the setting is
+  // absent or fails validation.
+  return {
+    baseUrl: e.OPENAI_BASE_URL || DEFAULT_BASE_URL,
+    model: e.OPENAI_MODEL || DEFAULT_MODEL,
+    apiKey,
+  };
 }
 
 /**
@@ -62,16 +82,20 @@ export async function chatCompletion(
   if (cfg.apiKey && isTrustedAiOrigin(cfg.baseUrl, env)) {
     headers.Authorization = `Bearer ${cfg.apiKey}`;
   }
-  const res = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: cfg.model,
-      messages,
-      temperature: options?.temperature ?? 0.7,
-      max_tokens: options?.maxTokens ?? 1200,
-    }),
-  });
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: cfg.model,
+        messages,
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: options?.maxTokens ?? 1200,
+      }),
+    },
+    CHAT_TIMEOUT_MS,
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`AI request failed: ${res.status} ${text.slice(0, 200)}`);

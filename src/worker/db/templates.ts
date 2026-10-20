@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { Template } from "@shared/types";
-import { newId, nowIso } from "./utils";
+import { escapeLike, newId, nowIso, parseStringArray } from "./utils";
 
 type Row = {
   id: string;
@@ -12,13 +12,7 @@ type Row = {
 };
 
 function parseArray(v: string | null): string[] | undefined {
-  if (!v) return undefined;
-  try {
-    const p = JSON.parse(v);
-    return Array.isArray(p) ? (p as string[]) : undefined;
-  } catch {
-    return undefined;
-  }
+  return parseStringArray(v);
 }
 
 function toTemplate(row: Row): Template {
@@ -32,10 +26,11 @@ function toTemplate(row: Row): Template {
   };
 }
 
-export async function listTemplates(db: D1Database, search?: string): Promise<Template[]> {
-  const stmt = search
-    ? db.prepare("SELECT * FROM templates WHERE name LIKE ?1 OR body LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
-    : db.prepare("SELECT * FROM templates ORDER BY updated_at DESC");
+export async function listTemplates(db: D1Database, search?: string, limit?: number): Promise<Template[]> {
+  const pattern = search ? `%${escapeLike(search)}%` : null;
+  const stmt = pattern
+    ? db.prepare("SELECT * FROM templates WHERE name LIKE ?1 ESCAPE '\\' OR body LIKE ?1 ESCAPE '\\' ORDER BY updated_at DESC LIMIT ?2").bind(pattern, limit ?? 100)
+    : db.prepare("SELECT * FROM templates ORDER BY updated_at DESC LIMIT ?1").bind(limit ?? 100);
   const res = await stmt.all<Row>();
   return (res.results ?? []).map(toTemplate);
 }

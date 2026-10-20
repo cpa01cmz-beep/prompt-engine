@@ -1,5 +1,5 @@
 export type Env = {
-  ASSETS: Fetcher;
+  ASSETS?: Fetcher;
   DB: D1Database;
   CACHE: KVNamespace;
   OPENAI_BASE_URL?: string;

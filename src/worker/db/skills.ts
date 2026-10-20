@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { Skill } from "@shared/types";
-import { newId, nowIso } from "./utils";
+import { escapeLike, newId, nowIso, parseStringArray } from "./utils";
 
 type Row = {
   id: string;
@@ -15,13 +15,7 @@ type Row = {
 };
 
 function parseArray(v: string | null): string[] | undefined {
-  if (!v) return undefined;
-  try {
-    const p = JSON.parse(v);
-    return Array.isArray(p) ? (p as string[]) : undefined;
-  } catch {
-    return undefined;
-  }
+  return parseStringArray(v);
 }
 
 function toSkill(row: Row): Skill {
@@ -38,10 +32,11 @@ function toSkill(row: Row): Skill {
   };
 }
 
-export async function listSkills(db: D1Database, search?: string): Promise<Skill[]> {
-  const stmt = search
-    ? db.prepare("SELECT * FROM skills WHERE name LIKE ?1 OR description LIKE ?1 OR instructions LIKE ?1 ORDER BY updated_at DESC").bind(`%${search}%`)
-    : db.prepare("SELECT * FROM skills ORDER BY updated_at DESC");
+export async function listSkills(db: D1Database, search?: string, limit?: number): Promise<Skill[]> {
+  const pattern = search ? `%${escapeLike(search)}%` : null;
+  const stmt = pattern
+    ? db.prepare("SELECT * FROM skills WHERE name LIKE ?1 ESCAPE '\\' OR description LIKE ?1 ESCAPE '\\' OR instructions LIKE ?1 ESCAPE '\\' ORDER BY updated_at DESC LIMIT ?2").bind(pattern, limit ?? 100)
+    : db.prepare("SELECT * FROM skills ORDER BY updated_at DESC LIMIT ?1").bind(limit ?? 100);
   const res = await stmt.all<Row>();
   return (res.results ?? []).map(toSkill);
 }

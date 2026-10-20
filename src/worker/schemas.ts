@@ -1,42 +1,66 @@
 import { z } from "zod";
 
+// Maximum serialized text any client-supplied field may carry. This bounds D1
+// writes, AI prompt construction, and Worker memory per request.
+const MAX_TEXT = 20_000;
+const MAX_TITLE = 300;
+const MAX_SEARCH = 500;
+const MAX_ARRAY_ITEMS = 50;
+const MAX_JSON_SERIALIZED = 32 * 1024;
+
+function serializedJsonSize(value: unknown): number {
+  if (value === undefined) return Infinity;
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return Infinity;
+  }
+}
+
+const BoundedText = z.string().max(MAX_TEXT);
+const BoundedShortText = z.string().max(MAX_TITLE);
+const BoundedSearchText = z.string().max(MAX_SEARCH);
+const BoundedStrings = z.array(z.string().max(MAX_TEXT)).max(MAX_ARRAY_ITEMS);
+
 export const PromptInputSchema = z.object({
-  title: z.string().min(1),
-  content: z.string().min(1),
-  role: z.string().optional(),
-  variables: z.array(z.string()).optional(),
-  constraints: z.string().optional(),
-  examples: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  title: BoundedShortText.min(1),
+  content: BoundedText.min(1),
+  role: BoundedShortText.optional(),
+  variables: BoundedStrings.optional(),
+  constraints: BoundedText.optional(),
+  examples: BoundedText.optional(),
+  tags: z.array(BoundedShortText).max(MAX_ARRAY_ITEMS).optional(),
 });
 
 export const PromptUpdateSchema = PromptInputSchema.partial();
 
 export const TemplateInputSchema = z.object({
-  name: z.string().min(1),
-  body: z.string().min(1),
-  variables: z.array(z.string()).optional(),
+  name: BoundedShortText.min(1),
+  body: BoundedText.min(1),
+  variables: BoundedStrings.optional(),
 });
 
 export const TemplateUpdateSchema = TemplateInputSchema.partial();
 
 export const SkillInputSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  instructions: z.string().optional(),
-  tools: z.array(z.string()).optional(),
-  examples: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
+  name: BoundedShortText.min(1),
+  description: BoundedText.optional(),
+  instructions: BoundedText.optional(),
+  tools: BoundedStrings.optional(),
+  examples: BoundedStrings.optional(),
+  tags: z.array(BoundedShortText).max(MAX_ARRAY_ITEMS).optional(),
 });
 
 export const SkillUpdateSchema = SkillInputSchema.partial();
 
 export const EvaluationInputSchema = z.object({
   targetType: z.enum(["prompt", "skill"]),
-  targetId: z.string().min(1),
-  score: z.number().nullable().optional(),
-  feedback: z.unknown().optional(),
-  model: z.string().optional(),
+  targetId: BoundedShortText.min(1),
+  score: z.number().min(0).max(100).nullable().optional(),
+  feedback: z.unknown().refine((v) => serializedJsonSize(v) <= MAX_JSON_SERIALIZED, {
+    message: "feedback is too large",
+  }).optional(),
+  model: BoundedShortText.optional(),
 });
 
 export const SettingsInputSchema = z.object({
@@ -48,62 +72,80 @@ export const SettingsValueSchema = z.object({
   // `undefined` is not a representable JSON value, so a missing/undefined
   // value is not a valid setting payload (it would otherwise make
   // JSON.stringify return `undefined` and crash the size check).
-  value: z.unknown().refine((v) => v !== undefined, { message: "value is required" }),
+  value: z.unknown()
+    .refine((v) => v !== undefined, { message: "value is required" })
+    .refine((v) => serializedJsonSize(v) <= MAX_JSON_SERIALIZED, {
+      message: "value is too large",
+    }),
 });
 
 // AI request bodies
 export const AiMessageSchema = z.object({
   role: z.enum(["system", "user", "assistant"]),
-  content: z.string(),
+  content: BoundedText.min(1),
 });
 
 export const ChatRequestSchema = z.object({
-  messages: z.array(AiMessageSchema).min(1),
+  messages: z.array(AiMessageSchema).min(1).max(40),
 });
 
 export const GeneratePromptSchema = z.object({
-  goal: z.string().min(1),
+  goal: BoundedText.min(1),
 });
 
 export const EvaluatePromptSchema = z.object({
-  prompt: z.string().min(1),
+  prompt: BoundedText.min(1),
 });
 
 export const OptimizePromptSchema = z.object({
-  prompt: z.string().min(1),
+  prompt: BoundedText.min(1),
 });
 
 export const GenerateSkillSchema = z.object({
-  goal: z.string().min(1),
+  goal: BoundedText.min(1),
 });
 
 export const EvaluateSkillSchema = z.object({
-  skill: z.string().min(1),
+  skill: BoundedText.min(1),
 });
 
 export const OptimizeSkillSchema = z.object({
-  skill: z.string().min(1),
+  skill: BoundedText.min(1),
 });
 
 export const SearchSkillsSchema = z.object({
-  query: z.string().min(1),
+  query: BoundedSearchText.min(1),
 });
 
 export const ResearchSchema = z.object({
-  topic: z.string().min(1),
-  domain: z.string().optional(),
+  topic: BoundedText.min(1),
+  domain: BoundedShortText.optional(),
 });
 
 export const ComparePromptsSchema = z.object({
-  promptA: z.string().min(1),
-  promptB: z.string().min(1),
+  promptA: BoundedText.min(1),
+  promptB: BoundedText.min(1),
 });
 
 export const RunSkillSchema = z.object({
-  skill: z.unknown(),
-  input: z.unknown().optional(),
+  skill: z.unknown().refine((v) => serializedJsonSize(v) <= MAX_JSON_SERIALIZED, {
+    message: "skill is too large",
+  }),
+  input: z.unknown().refine((v) => serializedJsonSize(v) <= MAX_JSON_SERIALIZED, {
+    message: "input is too large",
+  }).optional(),
 });
 
+// AI-extracted candidate skills (search-skills)
+export const SkillCandidateSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().min(1).optional(),
+  url: z.string().min(1).optional(),
+});
+
+export const SkillCandidatesSchema = z.array(SkillCandidateSchema);
+
+export type SkillCandidate = z.infer<typeof SkillCandidateSchema>;
 export type PromptInput = z.infer<typeof PromptInputSchema>;
 export type TemplateInput = z.infer<typeof TemplateInputSchema>;
 export type SkillInput = z.infer<typeof SkillInputSchema>;

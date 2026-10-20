@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/skills";
+import { clampListLimit } from "../db/utils";
 import { SkillInputSchema, SkillUpdateSchema } from "../schemas";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -8,7 +9,11 @@ const app = new Hono<{ Bindings: Env }>();
 app.get("/", async (c) => {
   try {
     const search = c.req.query("q");
-    const data = await repo.listSkills(c.env.DB, search ?? undefined);
+    const data = await repo.listSkills(
+      c.env.DB,
+      search ?? undefined,
+      clampListLimit(c.req.query("limit")),
+    );
     return c.json({ ok: true, data });
   } catch (err) {
     console.error("Request failed:", err);

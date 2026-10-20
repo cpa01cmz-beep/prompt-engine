@@ -25,4 +25,13 @@ describe("integration smoke", () => {
     const json = (await res.json()) as { ok: boolean };
     expect(json.ok).toBe(false);
   });
+  it("unmatched /api paths return JSON 404, not the SPA shell", async () => {
+    const res = await app.request("/api/definitely-not-a-route", {}, mockEnv as never);
+    expect(res.status).toBe(404);
+    const type = res.headers.get("content-type");
+    expect(type).toContain("application/json");
+    const json = (await res.json()) as { ok: boolean; error: string };
+    expect(json.ok).toBe(false);
+    expect(json.error).toBe("Not found");
+  });
 });

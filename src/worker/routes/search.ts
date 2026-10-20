@@ -2,6 +2,9 @@ import { Hono } from "hono";
 import type { Env } from "../env";
 import type { WebSearchResult } from "@shared/types";
 import { isNonEmptyString } from "../lib/validate";
+import { fetchWithTimeout } from "../lib/fetchTimeout";
+
+const SEARCH_TIMEOUT_MS = 10_000;
 
 type DuckTopic = {
   Text?: string;
@@ -38,8 +41,11 @@ app.get("/web", async (c) => {
     if (!isNonEmptyString(q)) {
       return c.json({ ok: false, error: "Missing required query parameter: q" }, 400);
     }
+    if (q.length > 500) {
+      return c.json({ ok: false, error: "Query too long (max 500 characters)" }, 400);
+    }
     const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_redirect=1&no_html=1`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, undefined, SEARCH_TIMEOUT_MS);
     if (!res.ok) {
       throw new Error(`DuckDuckGo request failed: ${res.status}`);
     }

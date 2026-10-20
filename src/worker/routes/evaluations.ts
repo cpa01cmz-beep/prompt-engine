@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import * as repo from "../db/evaluations";
+import { clampListLimit } from "../db/utils";
 import { EvaluationInputSchema } from "../schemas";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -9,7 +10,12 @@ app.get("/", async (c) => {
   try {
     const targetType = c.req.query("targetType");
     const targetId = c.req.query("targetId");
-    const data = await repo.listEvaluations(c.env.DB, targetType ?? undefined, targetId ?? undefined);
+    const data = await repo.listEvaluations(
+      c.env.DB,
+      targetType ?? undefined,
+      targetId ?? undefined,
+      clampListLimit(c.req.query("limit")),
+    );
     return c.json({ ok: true, data });
   } catch (err) {
     console.error("Request failed:", err);

@@ -36,6 +36,10 @@ app.route("/api/settings", settings);
 app.route("/api/ai", ai);
 app.route("/api/search", search);
 
+// Unmatched /api traffic must never fall through to the SPA shell: an HTML
+// 200 would confuse JSON API clients and mask routing mistakes.
+app.all("/api/*", (c) => c.json({ ok: false, error: "Not found" }, 404));
+
 // Fallback to static assets
 app.all("*", async (c) => {
   if (c.env?.ASSETS) {
