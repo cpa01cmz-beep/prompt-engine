@@ -260,6 +260,25 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   <Button variant="secondary" onClick={fetchModels} disabled={loadingModels || !active.baseUrl}>
                     {loadingModels ? "Fetching..." : "Fetch models"}
                   </Button>
+                  <Button
+                    variant="secondary"
+                    disabled={loadingModels || !active.baseUrl || !active.model}
+                    onClick={async () => {
+                      setSaving(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        const res = await api.aiTestConnection(active.baseUrl, active.model, active.apiKey);
+                        setSuccess(`Connection OK (HTTP ${res.status}).`);
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Connection failed.");
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                  >
+                    Test connection
+                  </Button>
                 </div>
               </div>
             )}

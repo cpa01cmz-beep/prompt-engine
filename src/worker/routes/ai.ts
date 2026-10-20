@@ -338,4 +338,54 @@ app.post("/models", async (c) => {
   }
 });
 
+
+
+function bearerToken2(c: { req: { header: (name: string) => string | undefined } }): string | null {
+  const h = c.req.header("Authorization");
+  if (!h) return null;
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1].trim() : null;
+}
+
+app.post("/test", async (c) => {
+  try {
+    const token = bearerToken2(c);
+    if (!token) return c.json({ ok: false, error: "Unauthorized" }, 401);
+    const user = await auth.getSessionUser(c.env.DB, token);
+    if (!user) return c.json({ ok: false, error: "Unauthorized" }, 401);
+
+    const body = (await c.req.json().catch(() => ({}))) as {
+      baseUrl?: string;
+      model?: string;
+      apiKey?: string;
+    };
+    const baseUrl = (body.baseUrl ?? "").trim();
+    const model = (body.model ?? "").trim();
+    const apiKey = (body.apiKey ?? "").trim() || c.env.OPENAI_API_KEY || "";
+    if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
+    if (!model) return c.json({ ok: false, error: "model is required" }, 400);
+
+    const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: "ping" }],
+        max_tokens: 5,
+      }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      return c.json({ ok: false, error: `HTTP ${res.status}: ${text.slice(0, 300)}` });
+    }
+    return c.json({ ok: true, data: { status: res.status } });
+  } catch (err) {
+    console.error("Request failed:", err);
+    return c.json({ ok: false, error: String(err) }, 500);
+  }
+});
+
 export default app;

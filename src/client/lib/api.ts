@@ -108,4 +108,10 @@ export const api = {
       body: JSON.stringify({ baseUrl, apiKey }),
     }),
 
+  aiTestConnection: (baseUrl: string, model: string, apiKey?: string) =>
+    request<{ status: number }>("/api/ai/test", {
+      method: "POST",
+      body: JSON.stringify({ baseUrl, model, apiKey }),
+    }),
+
 };
