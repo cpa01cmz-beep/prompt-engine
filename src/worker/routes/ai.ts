@@ -358,12 +358,18 @@ app.post("/test", async (c) => {
       baseUrl?: string;
       model?: string;
       apiKey?: string;
+      mode?: string;
     };
     const baseUrl = (body.baseUrl ?? "").trim();
     const model = (body.model ?? "").trim();
     const apiKey = (body.apiKey ?? "").trim() || c.env.OPENAI_API_KEY || "";
     if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
     if (!model) return c.json({ ok: false, error: "model is required" }, 400);
+
+    const messages =
+      body.mode === "generate"
+        ? buildCreatePromptMessages("Write a helpful assistant prompt")
+        : [{ role: "user" as const, content: "ping" }];
 
     const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -373,8 +379,9 @@ app.post("/test", async (c) => {
       headers,
       body: JSON.stringify({
         model,
-        messages: [{ role: "user", content: "ping" }],
-        max_tokens: 5,
+        messages,
+        temperature: body.mode === "generate" ? 0.7 : 0,
+        max_tokens: body.mode === "generate" ? 200 : 5,
       }),
     });
     const text = await res.text();
