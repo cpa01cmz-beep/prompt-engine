@@ -1,7 +1,7 @@
 # Evidence — AI prompt enrichment + context-limit raise (2026-10-20)
 
 ## Change
-- `src/worker/services/ai.ts`: all 10 `build*Messages` system prompts rewritten with rubrics, output-shape specs, and "JSON only" directives; `chatCompletion` gained `jsonMode` option (`response_format: { type: "json_object" }`); `chatCompletionJSON` always opts in and retries once without `response_format` on upstream HTTP 400 (providers that reject it); `CHAT_TIMEOUT_MS` 30 000 → 120 000 (slow self-hosted providers).
+- `src/worker/services/ai.ts`: all 10 `build*Messages` system prompts rewritten with rubrics, output-shape specs, and "JSON only" directives; `chatCompletion` gained `jsonMode` option (`response_format: { type: "json_object" }`); `chatCompletionJSON` always opts in and retries once without `response_format` on upstream HTTP 400 (providers that reject it); `CHAT_TIMEOUT_MS` 30 000 → 120 000 (slow self-hosted providers) and default `max_tokens` 1 200 → 8 128 so long generated prompts and large JSON responses are not truncated. The `/api/ai/test` connection probe keeps its tiny budgets (1 200 / 5) on purpose.
 - `src/worker/schemas.ts`: `MAX_TEXT` 20 000 → 50 000; `MAX_CONTEXT_CHARS` 64 000 → 200 000. Aggregate cap still binds the worst legal case (≈2.7 MB composed). Aggregate-cap error message now contains `200000`.
 - Docs and AGENTS bounds updated (`AGENTS.md`, `src/worker/AGENTS.md`, `docs/api.md`, `docs/architecture.md`); `docs/evidence/iter2-*` audit records intentionally untouched.
 

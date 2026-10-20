@@ -104,7 +104,7 @@ export async function chatCompletion(
         model: cfg.model,
         messages,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 1200,
+        max_tokens: options?.maxTokens ?? 8128,
         // Only sent when the caller opts in; providers that reject
         // response_format are handled by the retry in chatCompletionJSON.
         ...(options?.jsonMode ? { response_format: { type: "json_object" as const } } : {}),
