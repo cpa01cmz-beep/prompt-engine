@@ -31,7 +31,7 @@ export function getAiConfig(env: Env, settings?: Record<string, string>): AiConf
       provider = undefined;
     }
   }
-  const parsed = parseAiProvider(provider);
+  const parsed = parseAiProvider(provider, env);
   if (parsed) {
     return { baseUrl: parsed.baseUrl, model: parsed.model, apiKey };
   }

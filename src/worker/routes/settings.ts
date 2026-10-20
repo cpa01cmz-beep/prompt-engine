@@ -67,7 +67,7 @@ app.put("/:key", async (c) => {
     // The value space mirrors what the app reads back. `ai.provider` is the
     // only writable key and it must be a vetted provider shape (https origins
     // only) — anything else is rejected before it reaches D1.
-    if (key === "ai.provider" && !parseAiProvider(parsed.data.value)) {
+    if (key === "ai.provider" && !parseAiProvider(parsed.data.value, c.env)) {
       return c.json({ ok: false, error: "Invalid provider configuration" }, 400);
     }
     const serialized = JSON.stringify(parsed.data.value);

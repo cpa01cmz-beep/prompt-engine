@@ -26,19 +26,32 @@ describe("isPublicHttpsUrl", () => {
 });
 
 describe("parseAiProvider", () => {
-  it("accepts valid provider shapes", () => {
-    expect(parseAiProvider({ baseUrl: "https://opencode.ai/zen/v1", model: "test-model" })).toEqual({
+  const env = { OPENAI_BASE_URL: "https://opencode.ai/zen/v1" };
+  const envWithAllowlist = { OPENAI_BASE_URL: "https://opencode.ai/zen/v1", AI_PROVIDER_ALLOWLIST: "api.openai.com, https://example.ai/v1" };
+
+  it("accepts valid provider shapes for trusted origins", () => {
+    expect(parseAiProvider({ baseUrl: "https://opencode.ai/zen/v1", model: "test-model" }, env)).toEqual({
       baseUrl: "https://opencode.ai/zen/v1",
       model: "test-model",
     });
+    expect(parseAiProvider({ baseUrl: "https://api.openai.com/v1", model: "m" }, envWithAllowlist)).toEqual({
+      baseUrl: "https://api.openai.com/v1",
+      model: "m",
+    });
+  });
+
+  it("rejects trusted-shape values pointed at untrusted origins", () => {
+    expect(parseAiProvider({ baseUrl: "https://api.openai.com/v1", model: "m" }, env)).toBeNull();
+    expect(parseAiProvider({ baseUrl: "https://evil.com/v1", model: "m" }, env)).toBeNull();
+    expect(parseAiProvider({ baseUrl: "https://opencode.ai/zen/v1", model: "m" })).toBeNull();
   });
 
   it("rejects malformed or unsafe provider shapes", () => {
-    expect(parseAiProvider(null)).toBeNull();
-    expect(parseAiProvider("nope")).toBeNull();
-    expect(parseAiProvider({ baseUrl: "http://opencode.ai", model: "m" })).toBeNull();
-    expect(parseAiProvider({ baseUrl: "https://10.0.0.5", model: "m" })).toBeNull();
-    expect(parseAiProvider({ baseUrl: "https://opencode.ai", model: "" })).toBeNull();
+    expect(parseAiProvider(null, env)).toBeNull();
+    expect(parseAiProvider("nope", env)).toBeNull();
+    expect(parseAiProvider({ baseUrl: "http://opencode.ai", model: "m" }, env)).toBeNull();
+    expect(parseAiProvider({ baseUrl: "https://10.0.0.5", model: "m" }, env)).toBeNull();
+    expect(parseAiProvider({ baseUrl: "https://opencode.ai", model: "" }, env)).toBeNull();
   });
 });
 
