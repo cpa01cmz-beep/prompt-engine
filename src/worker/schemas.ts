@@ -91,6 +91,10 @@ export const ChatRequestSchema = z.object({
 
 export const GeneratePromptSchema = z.object({
   goal: BoundedText.min(1),
+  role: BoundedText.optional(),
+  variables: z.array(BoundedText.min(1)).max(50).optional(),
+  constraints: BoundedText.optional(),
+  examples: BoundedText.optional(),
 });
 
 export const EvaluatePromptSchema = z.object({

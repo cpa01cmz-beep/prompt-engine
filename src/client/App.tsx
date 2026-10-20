@@ -28,25 +28,64 @@ interface Module {
   description: string;
 }
 
-const promptModules: Module[] = [
-  { id: "creator", title: "Creator", description: "Generate prompts from a goal" },
-  { id: "evaluator", title: "Evaluator", description: "Score prompt quality" },
-  { id: "optimizer", title: "Optimizer", description: "Improve prompts" },
-  { id: "compare", title: "Compare", description: "Side-by-side comparison" },
-  { id: "library", title: "Library", description: "Save and manage prompts" },
-  { id: "template", title: "Templates", description: "Reusable templates" },
-  { id: "research", title: "Research", description: "Prompt engineering research" },
+interface ModuleGroup {
+  id: string;
+  heading: string;
+  modules: Module[];
+}
+
+/** The primary journey first, then the advanced tools. Module ids stay stable. */
+const promptModuleGroups: ModuleGroup[] = [
+  {
+    id: "prompt-create",
+    heading: "Create your prompt",
+    modules: [
+      { id: "creator", title: "Creator", description: "Generate prompts from a goal" },
+      { id: "evaluator", title: "Evaluator", description: "Score prompt quality" },
+      { id: "optimizer", title: "Optimizer", description: "Improve prompts" },
+      { id: "library", title: "Library", description: "Save and manage prompts" },
+    ],
+  },
+  {
+    id: "prompt-advanced",
+    heading: "Advanced tools",
+    modules: [
+      { id: "compare", title: "Compare", description: "Side-by-side comparison" },
+      { id: "template", title: "Templates", description: "Reusable templates" },
+      { id: "research", title: "Research", description: "Prompt engineering research" },
+    ],
+  },
 ];
 
-const skillModules: Module[] = [
-  { id: "search", title: "Search", description: "Discover skills" },
-  { id: "research", title: "Research", description: "Skill domain research" },
-  { id: "creator", title: "Creator", description: "Create skill definitions" },
-  { id: "optimizer", title: "Optimizer", description: "Improve skills" },
-  { id: "evaluator", title: "Evaluator", description: "Score skill quality" },
-  { id: "library", title: "Library", description: "Manage skills" },
-  { id: "lab", title: "Lab", description: "Experiment and test" },
+const skillModuleGroups: ModuleGroup[] = [
+  {
+    id: "skill-create",
+    heading: "Create your skill",
+    modules: [
+      { id: "creator", title: "Creator", description: "Create skill definitions" },
+      { id: "evaluator", title: "Evaluator", description: "Score skill quality" },
+      { id: "optimizer", title: "Optimizer", description: "Improve skills" },
+      { id: "library", title: "Library", description: "Manage skills" },
+    ],
+  },
+  {
+    id: "skill-advanced",
+    heading: "Advanced tools",
+    modules: [
+      { id: "search", title: "Search", description: "Discover skills" },
+      { id: "research", title: "Research", description: "Skill domain research" },
+      { id: "lab", title: "Lab", description: "Experiment and test" },
+    ],
+  },
 ];
+
+function groupsFor(engine: Engine): ModuleGroup[] {
+  return engine === "prompt" ? promptModuleGroups : skillModuleGroups;
+}
+
+function modulesFor(engine: Engine): Module[] {
+  return groupsFor(engine).flatMap((group) => group.modules);
+}
 
 function renderPromptModule(active: string): JSX.Element | null {
   switch (active) {
@@ -96,7 +135,8 @@ export default function App(): JSX.Element {
   const [engine, setEngine] = useState<Engine>("prompt");
   const [active, setActive] = useState<string>("creator");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const modules = engine === "prompt" ? promptModules : skillModules;
+  const groups = groupsFor(engine);
+  const modules = modulesFor(engine);
   const current = modules.find((m) => m.id === active) ?? modules[0];
 
   useEffect(() => {
@@ -198,42 +238,78 @@ export default function App(): JSX.Element {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div
+          role="region"
+          aria-labelledby="journey-heading"
+          className="mb-6 rounded-2xl border border-indigo-200/70 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm shadow-indigo-100 sm:p-6"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 id="journey-heading" className="text-xl font-bold tracking-tight text-slate-900">
+                Your prompt journey
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                One flow from a rough goal to a saved prompt. Start with the Creator, then refine.
+              </p>
+              <ol className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-700">
+                <li className="rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200">1. Create</li>
+                <li className="rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200">2. Evaluate</li>
+                <li className="rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200">3. Optimize</li>
+                <li className="rounded-full bg-white px-2.5 py-1 shadow-sm ring-1 ring-slate-200">4. Save</li>
+              </ol>
+            </div>
+            <Button size="lg" onClick={() => switchEngine("prompt")} className="shrink-0">
+              Start creating a prompt
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
           <aside
             className="rounded-2xl border border-slate-200/70 bg-white p-3 shadow-sm shadow-slate-200/60 lg:sticky lg:top-20 lg:self-start"
             aria-label="Modules"
           >
-            <nav aria-label="Engine modules">
-              <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
-                {modules.map((m) => {
-                  const isActive = m.id === current.id;
-                  return (
-                    <li key={m.id} className="shrink-0 lg:shrink">
-                      <button
-                        type="button"
-                        aria-current={isActive ? "true" : undefined}
-                        onClick={() => setActive(m.id)}
-                        className={cn(
-                          "w-full whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:whitespace-normal",
-                          isActive
-                            ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                            : "text-slate-700 hover:bg-slate-100",
-                        )}
-                      >
-                        <span className="block font-semibold">{m.title}</span>
-                      </button>
-                      <span
-                        className={cn(
-                          "mt-0.5 hidden px-3 pb-1 text-xs lg:block",
-                          isActive ? "text-indigo-600" : "text-slate-500",
-                        )}
-                      >
-                        {m.description}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+            <nav aria-label="Engine modules" className="space-y-3">
+              {groups.map((group) => (
+                <div key={group.id} role="group" aria-labelledby={`${group.id}-heading`}>
+                  <p
+                    id={`${group.id}-heading`}
+                    className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    {group.heading}
+                  </p>
+                  <ul className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:gap-1 lg:overflow-visible lg:pb-0">
+                    {group.modules.map((m) => {
+                      const isActive = m.id === current.id;
+                      return (
+                        <li key={m.id} className="shrink-0 lg:shrink">
+                          <button
+                            type="button"
+                            aria-current={isActive ? "true" : undefined}
+                            onClick={() => setActive(m.id)}
+                            className={cn(
+                              "w-full whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 lg:whitespace-normal",
+                              isActive
+                                ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                                : "text-slate-700 hover:bg-slate-100",
+                            )}
+                          >
+                            <span className="block font-semibold">{m.title}</span>
+                          </button>
+                          <span
+                            className={cn(
+                              "mt-0.5 hidden px-3 pb-1 text-xs lg:block",
+                              isActive ? "text-indigo-600" : "text-slate-500",
+                            )}
+                          >
+                            {m.description}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
             </nav>
           </aside>
 

@@ -143,10 +143,37 @@ export async function chatCompletionJSON<T = unknown>(
 }
 
 // Prompt builders
-export function buildCreatePromptMessages(goal: string): AiMessage[] {
+
+/** Optional prompt context that is appended as labeled sections after the goal. */
+export type PromptGenerationContext = {
+  role?: string;
+  variables?: string[];
+  constraints?: string;
+  examples?: string;
+};
+
+/**
+ * Compose the user message for prompt generation. Sections are appended in a
+ * deterministic order only when provided and non-empty; a goal-only call (no
+ * context, or an all-empty context) yields exactly the goal string alone.
+ */
+function composeGenerationUserMessage(goal: string, ctx?: PromptGenerationContext): string {
+  const sections: string[] = [];
+  if (ctx?.role) sections.push(`Role: ${ctx.role}`);
+  if (ctx?.variables?.length) sections.push(`Variables: ${ctx.variables.join(", ")}`);
+  if (ctx?.constraints) sections.push(`Constraints: ${ctx.constraints}`);
+  if (ctx?.examples) sections.push(`Examples: ${ctx.examples}`);
+  if (sections.length === 0) return goal;
+  return `${goal}\n${sections.join("\n")}`;
+}
+
+export function buildCreatePromptMessages(
+  goal: string,
+  ctx?: PromptGenerationContext,
+): AiMessage[] {
   return [
     { role: "system", content: "You are an expert prompt engineer. Generate a high-quality prompt for the user's goal. Return only the prompt text." },
-    { role: "user", content: goal },
+    { role: "user", content: composeGenerationUserMessage(goal, ctx) },
   ];
 }
 

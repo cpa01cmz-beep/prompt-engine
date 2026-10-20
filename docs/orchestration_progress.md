@@ -55,9 +55,9 @@
 
 | Gate | Condition | Owner | State | Evidence |
 |---|---|---|---|---|
-| 0 | lint/typecheck green | devs | ⬜ pending | |
+| 0 | lint/typecheck green | devs | 🟢 backend: exit 0 · frontend pending | docs/evidence/phase2-backend-verification.md |
 | 0 | build green | devs | ⬜ pending | |
-| 1 | unit tests 100% pass incl. new composition tests | QA | ⬜ pending | |
+| 1 | unit tests 100% pass incl. composition tests | QA | 🟡 backend partial: unit 52/52 · integration 3/3 | docs/evidence/phase2-backend-verification.md |
 | 1 | coverage report archived | QA | ⬜ pending | |
 | 2 | integration tests pass; contract `{ok,data,error}` intact w/ optional fields | QA | ⬜ pending | |
 | 2 | dist build artifact produced | QA | ⬜ pending | |
@@ -71,4 +71,4 @@
 
 - 2026-10-20 Phase 1 started; codebase recon completed (16-module map, verified ignored-fields bug).
 - 2026-10-20 Phase 1 complete: `docs/phase1-research.md` (research analyst), `docs/specifications.md` (this iteration's spec), `docs/orchestration_progress.md`.
-- 2026-10-20 Phase 2 dispatched: ai-engineer (backend automation), frontend-developer (UI simplification). File ownership partitioned to avoid conflicts.
+- 2026-10-20 Phase 2 backend complete (ai-engineer): context-aware `GeneratePromptSchema` + message composition + client `aiGeneratePrompt(goal, ctx)`; typecheck/lint 0, unit 52/52, integration 3/3. Deviations logged: no `.strict()` (matches existing zod style); whitespace-only goal still accepted per `BoundedText.min(1)` contract. Evidence: docs/evidence/phase2-backend-verification.md.

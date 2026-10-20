@@ -61,8 +61,19 @@ export const api = {
   aiChat: (messages: { role: "system" | "user" | "assistant"; content: string }[]) =>
     request<{ content: string }>("/api/ai/chat", { method: "POST", body: JSON.stringify({ messages }) }),
 
-  aiGeneratePrompt: (goal: string) =>
-    request<{ content: string }>("/api/ai/generate-prompt", { method: "POST", body: JSON.stringify({ goal }) }),
+  aiGeneratePrompt: (
+    goal: string,
+    ctx?: { role?: string; variables?: string[]; constraints?: string; examples?: string },
+  ) => {
+    // Only non-empty fields are serialized so the worker's goal-only path
+    // stays byte-identical when no context is supplied.
+    const body: Record<string, unknown> = { goal };
+    if (ctx?.role) body.role = ctx.role;
+    if (ctx?.variables?.length) body.variables = ctx.variables;
+    if (ctx?.constraints) body.constraints = ctx.constraints;
+    if (ctx?.examples) body.examples = ctx.examples;
+    return request<{ content: string }>("/api/ai/generate-prompt", { method: "POST", body: JSON.stringify(body) });
+  },
   aiEvaluatePrompt: (prompt: string) =>
     request<{ content: string }>("/api/ai/evaluate-prompt", { method: "POST", body: JSON.stringify({ prompt }) }),
   aiOptimizePrompt: (prompt: string) =>

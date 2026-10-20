@@ -16,7 +16,7 @@ test.describe("prompt engine form flow (Creator)", () => {
     const save = page.waitForResponse(
       (r) => r.url().endsWith("/api/prompts") && r.request().method() === "POST",
     );
-    await panel.getByRole("button", { name: "Save to Library" }).click();
+    await panel.getByRole("button", { name: "Save" }).click();
     await save;
     await expect(page.getByText("Saved to library.")).toBeVisible();
 
@@ -33,7 +33,7 @@ test.describe("prompt engine form flow (Creator)", () => {
       status: 500,
       body: { ok: false, error: "Could not save prompt" },
     });
-    await panel.getByRole("button", { name: "Save to Library" }).click();
+    await panel.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText("Could not save prompt")).toBeVisible();
   });
 
@@ -49,6 +49,42 @@ test.describe("prompt engine form flow (Creator)", () => {
     await panel.getByRole("button", { name: "Optimize" }).click();
     await optimize;
     await expect(page.getByLabel("Result")).toHaveValue("Optimized prompt content");
+  });
+
+  test("context fields reach /api/ai/generate-prompt and empty fields are omitted", async ({ page }) => {
+    const bodies: string[] = [];
+    await page.route("**/api/ai/generate-prompt", (route) => {
+      bodies.push(route.request().postData() ?? "");
+      return route.fallback();
+    });
+    const { panel } = await openPromptCreator(page);
+
+    await panel.getByRole("button", { name: "Add context" }).click();
+    await page.getByLabel("Goal").fill("Write a launch email");
+    await page.getByLabel("Role").fill("senior marketer");
+    await page.getByLabel("Variables (comma separated)").fill(" audience , tone , ,");
+    await page.getByLabel("Constraints").fill("Under 200 words");
+    await page.getByLabel("Examples").fill("Example launch email");
+    await panel.getByRole("button", { name: "Generate" }).click();
+    await expect(page.getByLabel("Result")).toHaveValue("Generated prompt content");
+
+    // Context travels with the goal; variables are a trimmed, blank-free string array.
+    expect(JSON.parse(bodies[0] ?? "{}")).toEqual({
+      goal: "Write a launch email",
+      role: "senior marketer",
+      variables: ["audience", "tone"],
+      constraints: "Under 200 words",
+      examples: "Example launch email",
+    });
+
+    // Clearing the optional context must restore the goal-only payload (no keys at all).
+    await page.getByLabel("Role").fill("");
+    await page.getByLabel("Variables (comma separated)").fill("");
+    await page.getByLabel("Constraints").fill("");
+    await page.getByLabel("Examples").fill("");
+    await panel.getByRole("button", { name: "Generate" }).click();
+    await expect(page.getByLabel("Result")).toHaveValue("Generated prompt content");
+    expect(JSON.parse(bodies[1] ?? "{}")).toEqual({ goal: "Write a launch email" });
   });
 });
 

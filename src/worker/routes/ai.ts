@@ -74,7 +74,8 @@ app.post("/generate-prompt", async (c) => {
     if (!parsed.success) {
       return c.json({ ok: false, error: parsed.error.message }, 400);
     }
-    const messages = buildCreatePromptMessages(parsed.data.goal);
+    const { goal, role, variables, constraints, examples } = parsed.data;
+    const messages = buildCreatePromptMessages(goal, { role, variables, constraints, examples });
     const content = await chatCompletion(c.env, messages, { temperature: 0.7 });
     return c.json({ ok: true, data: { content } });
   } catch (err) {
