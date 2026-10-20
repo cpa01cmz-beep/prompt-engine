@@ -1,7 +1,6 @@
 import { Context } from "hono";
 
 const OUTBOUND_ERROR_STATUS = 502;
-const OUTBOUND_ERROR_BODY = { ok: false, error: "Upstream AI error" } as const;
 
 /**
  * Map a failed outbound request (AI provider, web search) to the generic
@@ -11,5 +10,6 @@ const OUTBOUND_ERROR_BODY = { ok: false, error: "Upstream AI error" } as const;
  */
 export function mapOutboundError(c: Context, cause: unknown): Response {
   console.error("Outbound request failed:", cause);
-  return c.json(OUTBOUND_ERROR_BODY, OUTBOUND_ERROR_STATUS);
+  // TEMP DEBUG
+  return c.json({ ok: false, error: String(cause) }, OUTBOUND_ERROR_STATUS);
 }

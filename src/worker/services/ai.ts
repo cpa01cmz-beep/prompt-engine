@@ -18,8 +18,8 @@ export type AiConfig = {
 export function getAiConfig(env: Env, settings?: Record<string, string>): AiConfig {
   const e = (env ?? {}) as Env;
   const settingsApiKey = settings?.["OPENAI_API_KEY"];
-  const apiKey = e.OPENAI_API_KEY || settingsApiKey;
-  const apiKeyFromSettings = !e.OPENAI_API_KEY && Boolean(settingsApiKey);
+  const apiKey = settingsApiKey || e.OPENAI_API_KEY;
+  const apiKeyFromSettings = Boolean(settingsApiKey);
   // Operators can point the app at their own inference endpoint via the
   // user-writable `ai.provider` setting. Anything else in settings (including
   // legacy OPENAI_BASE_URL/OPENAI_MODEL keys) is ignored: that key space is
@@ -99,6 +99,7 @@ export async function chatCompletion(
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: options?.maxTokens ?? 1200,
+        stream: false,
       }),
     },
     CHAT_TIMEOUT_MS,

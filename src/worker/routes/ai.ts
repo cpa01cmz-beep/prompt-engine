@@ -359,6 +359,7 @@ app.post("/test", async (c) => {
       model?: string;
       apiKey?: string;
       mode?: string;
+      goal?: string;
     };
     const baseUrl = (body.baseUrl ?? "").trim();
     const model = (body.model ?? "").trim();
@@ -366,9 +367,10 @@ app.post("/test", async (c) => {
     if (!baseUrl) return c.json({ ok: false, error: "baseUrl is required" }, 400);
     if (!model) return c.json({ ok: false, error: "model is required" }, 400);
 
+    const goal = (body.goal ?? "Write a helpful assistant prompt").trim() || "Write a helpful assistant prompt";
     const messages =
       body.mode === "generate"
-        ? buildCreatePromptMessages("Write a helpful assistant prompt")
+        ? buildCreatePromptMessages(goal)
         : [{ role: "user" as const, content: "ping" }];
 
     const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
@@ -382,6 +384,7 @@ app.post("/test", async (c) => {
         messages,
         temperature: body.mode === "generate" ? 0.7 : 0,
         max_tokens: body.mode === "generate" ? 1200 : 5,
+        stream: false,
       }),
     });
     const text = await res.text();
@@ -394,5 +397,7 @@ app.post("/test", async (c) => {
     return c.json({ ok: false, error: String(err) }, 500);
   }
 });
+
+
 
 export default app;

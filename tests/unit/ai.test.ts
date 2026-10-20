@@ -10,16 +10,24 @@ describe("getAiConfig", () => {
     expect(cfg.model).toBe("deepseek-v4.1-flash-free");
   });
 
-  it("never sources the API key from settings", () => {
-    // Settings are user-writable via /api/settings; the API key must only
-    // ever come from the trusted environment configuration.
+  it("prefers an explicitly saved settings API key", () => {
+    // Settings are now auth-protected, so an operator-saved key may override
+    // the (possibly empty) environment key.
     const env = { OPENAI_API_KEY: "env-secret" } as unknown as Env;
     const cfg = getAiConfig(env, {
-      OPENAI_API_KEY: "attacker-key",
-      openai_api_key: "attacker-key-2",
+      OPENAI_API_KEY: "settings-key",
     });
 
+    expect(cfg.apiKey).toBe("settings-key");
+    expect(cfg.apiKeyFromSettings).toBe(true);
+  });
+
+  it("falls back to the environment key when settings has none", () => {
+    const env = { OPENAI_API_KEY: "env-secret" } as unknown as Env;
+    const cfg = getAiConfig(env, {});
+
     expect(cfg.apiKey).toBe("env-secret");
+    expect(cfg.apiKeyFromSettings).toBe(false);
   });
 
   it("trusts only the configured inference origin", () => {
